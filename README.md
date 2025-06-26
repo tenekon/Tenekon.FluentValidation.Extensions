@@ -1,1 +1,3 @@
-# Tenekon.Extensions.AspNetCore.Components.FluentValidation
+# Tenekon.FluentValidation.Extensions
+
+## Tenekon.FluentValidation.Extensions.AspNetCore.Components
