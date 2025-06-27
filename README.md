@@ -26,6 +26,8 @@
 
 An extension to integrate [FluentValidation](https://fluentvalidation.net/) with ASP.NET Core Components (Blazor). This library enhances component-level validation in Blazor applications using FluentValidation.
 
+> :open_book: Looking for the [Component Validator Cookbook](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md) that covers all scenarios? [Click here](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md).
+
 ---
 
 ### Features
@@ -72,19 +74,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<MyModelValidator>();
 </EditForm>
 ```
 
----
-
-**TBD**
-
-TBD: Document which scenarios are covered by the different components and parameters, e.g.
-
-- `<ComponentValidatorRootpath ../>`
-- `<ComponentValidatorRootpath ..>..</ComponentValidatorRootpath>`
-- `<ComponentValidatorRootpath Routes=".." ../>`
-- `<ComponentValidatorSubpath ..>..</ComponentValidatorSubpath>`
-- `<ComponentValidatorSubpath Routes=".." ..>..</ComponentValidatorSubpath>`
-- `<ComponentValidator*path SuppressInvalidatableFieldModels=".." ../>`
-- `<ComponentValidatorRoutes>..</ComponentValidatorRoutes>`
+Looking for more advanced scenarios? Read the [Component Validator Cookbook](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md).
 
 ### Target Framework
 
