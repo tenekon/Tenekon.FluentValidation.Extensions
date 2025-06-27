@@ -7,6 +7,20 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextualComponentTrait, IComponentValidatorSubpathTrait
 {
+    private static Exception ExceptionFactoryImpl(IComponentValidatorSubpathTrait.ErrorContext context)
+    {
+        return context.Identifier switch {
+            IComponentValidatorSubpathTrait.ErrorIdentifier.OwnEditContextAndModel => new InvalidOperationException(
+                $"{context.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter, but not both."),
+            IComponentValidatorSubpathTrait.ErrorIdentifier.NoOwnEditContextAndNoModel => new InvalidOperationException(
+                $"{context.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter."),
+            _ => IComponentValidatorSubpathTrait.DefaultExceptionFactory(context)
+        };
+    }
+
+    Func<IComponentValidatorSubpathTrait.ErrorContext, Exception> IComponentValidatorSubpathTrait.ExceptionFactory { get; } =
+        ExceptionFactoryImpl;
+
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties
     public object? Model {
@@ -20,7 +34,7 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     public EditContext? EditContext {
 #pragma warning restore BL0007 // Component parameters should be auto properties
         get => ((IComponentValidatorSubpathTrait)this).OwnEditContext;
-        set => ((IComponentValidatorSubpathTrait)this).SetOwnEditContextExplictly(value);
+        set => ((IComponentValidatorSubpathTrait)this).SetOwnEditContextExplicitly(value);
     }
 
     bool IComponentValidatorSubpathTrait.HasOwnEditContextBeenSetExplicitly { get; set; }
@@ -31,10 +45,10 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
         ((IComponentValidatorSubpathTrait)this).OwnEditContext ?? throw new InvalidOperationException();
 
     // ReSharper disable once MemberHidesInterfaceMemberWithDefaultImplementation
-    protected override  void OnParametersSet()
+    protected override void OnParametersSet()
     {
         ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSet();
-        
+
         var ownEditContext = ((IComponentValidatorSubpathTrait)this).OwnEditContext;
         Debug.Assert(ownEditContext is not null);
         if (Validator is null && ValidatorType is null) {
@@ -43,7 +57,7 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
 
         base.OnParametersSet();
     }
-    
+
     /* TODO: Make pluggable */
     // protected override void OnOwnEditContextChanged(EditContextChangedEventArgs args)
     // {
@@ -61,7 +75,7 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     //     rootComponentValidatorContext.AttachValidatorContext(_leafComponentValidatorContext);
     //     base.OnOwnEditContextChanged(args);
     // }
-    
+
     /* TODO: Make pluggable */
     // protected override void DeinitializeOwnEditContext()
     // {

@@ -21,7 +21,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase, ICom
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
     private readonly RenderFragment<RenderFragment?> _renderComponentValidatorRoutesFragment;
     private readonly Action<ValidationStrategy<object>> _applyValidationStrategyAction;
-    private bool _havingValidatorSetExplictly;
+    private bool _havingValidatorSetExplicitly;
     private IValidator? _validator;
 
     /* TODO: Make pluggable */
@@ -42,7 +42,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase, ICom
         get => _validator;
         set {
             _validator = value;
-            _havingValidatorSetExplictly = value is not null;
+            _havingValidatorSetExplicitly = value is not null;
         }
     }
 
@@ -136,8 +136,8 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase, ICom
 
     private void ConfigureOnParametersSet()
     {
-        // We do not allow to set the validator explictly and having specified the validator type as the same type 
-        if (!(_havingValidatorSetExplictly ^ ValidatorType is not null)) {
+        // We do not allow to set the validator Explicitly and having specified the validator type as the same type 
+        if (!(_havingValidatorSetExplicitly ^ ValidatorType is not null)) {
             throw new InvalidOperationException(
                 $"{GetType()} requires either the parameter {nameof(Validator)} of type {nameof(IValidator)} or {nameof(ValidatorType)} of type {nameof(Type)}");
         }

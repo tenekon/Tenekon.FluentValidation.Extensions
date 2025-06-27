@@ -5,6 +5,19 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 internal interface IComponentValidatorSubpathTrait
 {
+    static readonly Func<ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
+
+    private static Exception DefaultExceptionFactoryImpl(ErrorContext errorContext) =>
+        errorContext.Identifier switch {
+            ErrorIdentifier.OwnEditContextAndModel => new InvalidOperationException(
+                $"{errorContext.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} property or a non-null {nameof(OwnEditContext)} property, but not both."),
+            ErrorIdentifier.NoOwnEditContextAndNoModel => new InvalidOperationException(
+                $"{errorContext.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} property or a non-null {nameof(OwnEditContext)} property."),
+            _ => new Exception()
+        };
+
+    Func<ErrorContext, Exception> ExceptionFactory => DefaultExceptionFactory;
+
     /// <summary>
     /// Indicates having non-null <see cref="OwnEditContext"/> parameter.
     /// </summary>
@@ -19,7 +32,7 @@ internal interface IComponentValidatorSubpathTrait
     /// <see cref="HasOwnEditContextBeenSetExplicitly"/> is set to <c>true</c> if <paramref name="editContext"/> is not <c>null</c>, otherwise <c>false</c>.
     /// </summary>
     /// <param name="editContext">The edit context to set.</param>
-    void SetOwnEditContextExplictly(EditContext? editContext)
+    void SetOwnEditContextExplicitly(EditContext? editContext)
     {
         OwnEditContext = editContext;
         HasOwnEditContextBeenSetExplicitly = editContext is not null;
@@ -29,14 +42,12 @@ internal interface IComponentValidatorSubpathTrait
     {
         if (HasOwnEditContextBeenSetExplicitly && Model is not null) {
             // We have OwnEditContext and Model
-            throw new InvalidOperationException(
-                $"{GetType().Name} requires a non-null {nameof(Model)} parameter or a non-null {nameof(OwnEditContext)} parameter, but not both.");
+            throw ExceptionFactory(new ErrorContext(this, ErrorIdentifier.OwnEditContextAndModel));
         }
 
         if (!HasOwnEditContextBeenSetExplicitly && Model is null) {
             // We have no OwnEditContext and no Model
-            throw new InvalidOperationException(
-                $"{GetType().Name} requires either a non-null {nameof(Model)} parameter or a non-null {nameof(OwnEditContext)} parameter.");
+            throw ExceptionFactory(new ErrorContext(this, ErrorIdentifier.NoOwnEditContextAndNoModel));
         }
 
         // Re-assign only if Model is not null and either OwnEditContext is null or Model differs from OwnEditContext.Model,
@@ -44,5 +55,17 @@ internal interface IComponentValidatorSubpathTrait
         if (Model is not null && !ReferenceEquals(Model, OwnEditContext?.Model)) {
             OwnEditContext = new EditContext(Model!);
         }
+    }
+
+    public sealed class ErrorContext(object? provocateur, ErrorIdentifier identifier)
+    {
+        public ErrorIdentifier Identifier { get; } = identifier;
+        public object? Provocateur { get; } = provocateur;
+    }
+
+    public enum ErrorIdentifier
+    {
+        OwnEditContextAndModel,
+        NoOwnEditContextAndNoModel
     }
 }
