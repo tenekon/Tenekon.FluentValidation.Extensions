@@ -197,7 +197,7 @@ Use to nest `ComponentValidatorRoutes` manually inside a scoped submodel validat
 
   ```csharp
   Routes = new[] { () => Model.City.Address } // ✅ Good
-  Routes = new[] { () => Model.City, () => Model.City.Address, () => Model.City.Address.Street } // ❌ Redundant
+  Routes = new[] { () => Model.City, () => Model.City.Address } // ❌ Redundant
   ```
 * Redundant as long as you do not validate against `Model.City.Name` within the ChildContent of the component declaring the routes.
 * Routes have a scoped `EditContext` used by inputs within `ChildContent`. The scoped `Editontext` uses the routes to be able to navigate back to `Model` as shown in the example above.
