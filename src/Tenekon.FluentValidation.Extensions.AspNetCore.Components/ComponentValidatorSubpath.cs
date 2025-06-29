@@ -7,7 +7,7 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextualComponentTrait, IComponentValidatorSubpathTrait
 {
-    private static Exception ExceptionFactoryImpl(IComponentValidatorSubpathTrait.ErrorContext context)
+    private static Exception DefaultExceptionFactoryImpl(IComponentValidatorSubpathTrait.ErrorContext context)
     {
         return context.Identifier switch {
             IComponentValidatorSubpathTrait.ErrorIdentifier.OwnEditContextAndModel => new InvalidOperationException(
@@ -18,8 +18,11 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
         };
     }
 
-    Func<IComponentValidatorSubpathTrait.ErrorContext, Exception> IComponentValidatorSubpathTrait.ExceptionFactory { get; } =
-        ExceptionFactoryImpl;
+    public static readonly Func<IComponentValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
+        DefaultExceptionFactoryImpl;
+
+    Func<IComponentValidatorSubpathTrait.ErrorContext, Exception> IComponentValidatorSubpathTrait.ExceptionFactory =>
+        DefaultExceptionFactory;
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties

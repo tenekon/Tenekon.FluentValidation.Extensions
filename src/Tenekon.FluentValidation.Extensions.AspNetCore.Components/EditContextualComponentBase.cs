@@ -22,7 +22,9 @@ public abstract class EditContextualComponentBase : ComponentBase, IEditContextu
     internal ValidationMessageStore? _rootEditContextValidationMessageStore;
     internal ValidationMessageStore? _ownEditContextValidationMessageStore;
 
-    public EditContext OwnEditContext => _ownEditContext ?? throw new InvalidOperationException("");
+    public EditContext OwnEditContext =>
+        _ownEditContext ?? throw new InvalidOperationException(
+            $"The {nameof(OwnEditContext)} property hos not been yet initialized. Typically initialized the first time during component initialization.");
 
     [CascadingParameter]
     protected EditContext? SuperEditContext { get; private set; }
@@ -113,7 +115,7 @@ public abstract class EditContextualComponentBase : ComponentBase, IEditContextu
 
             if (rootEditContextChanged) {
                 ownEditContext.Properties[s_rootEditContextLookupKey] = rootEditContext;
-                
+
                 OnRootEditContextChanged(
                     new EditContextChangedEventArgs {
                         Old = currentRootEditContext, New = rootEditContext

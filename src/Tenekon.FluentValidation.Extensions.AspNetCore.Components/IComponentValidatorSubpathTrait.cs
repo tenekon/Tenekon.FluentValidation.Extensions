@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-internal interface IComponentValidatorSubpathTrait
+public interface IComponentValidatorSubpathTrait
 {
-    static readonly Func<ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
+    public static readonly Func<ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
 
     private static Exception DefaultExceptionFactoryImpl(ErrorContext errorContext) =>
         errorContext.Identifier switch {
@@ -59,8 +59,8 @@ internal interface IComponentValidatorSubpathTrait
 
     public sealed class ErrorContext(object? provocateur, ErrorIdentifier identifier)
     {
-        public ErrorIdentifier Identifier { get; } = identifier;
         public object? Provocateur { get; } = provocateur;
+        public ErrorIdentifier Identifier { get; } = identifier;
     }
 
     public enum ErrorIdentifier

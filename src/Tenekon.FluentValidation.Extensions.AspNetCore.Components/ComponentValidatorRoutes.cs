@@ -15,7 +15,7 @@ file static class EditContextAccessor
 }
 
 // This component is highly specialized and tighly coupled with the internals of EditContext.
-// The component must be the owner of EditContext's event invocations, but does not want to be the owner of EditContext
+// The component must be the owner of super EditContext's event invocations, but does not want to be the owner of super EditContext
 public class ComponentValidatorRoutes : EditContextualComponentBase, IEditContextualComponentTrait, IComponentValidatorSubpathTrait
 {
     private const string EditContextFieldStatesFieldName = "_fieldStates";
