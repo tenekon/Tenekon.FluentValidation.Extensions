@@ -30,7 +30,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase, IEditContex
             throw new NotImplementedException(
                 $"{nameof(EditContext)} does not implement the {EditContextFieldStatesFieldName} field anymore.");
 
-    private Dictionary<ModelIdentifier, FieldIdentifier>? _modelFieldIdentifiers;
+    private Dictionary<ModelIdentifier, FieldIdentifier>? _modelRoutes;
     private ModelIdentifier _superEditContextModelIdentifier;
 
     [CascadingParameter]
@@ -64,7 +64,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase, IEditContex
         ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSet();
         base.OnParametersSet();
 
-        InitializeModelFieldIdentifiers();
+        InitializeModelRoutes();
 
         Debug.Assert(_superEditContext is not null);
         if (_superEditContextChangedSinceLastParametersSet) {
@@ -85,19 +85,19 @@ public class ComponentValidatorRoutes : EditContextualComponentBase, IEditContex
 
         return;
 
-        void InitializeModelFieldIdentifiers()
+        void InitializeModelRoutes()
         {
-            if (_modelFieldIdentifiers is not { } routeModelFieldIdentifiers) {
-                _modelFieldIdentifiers = routeModelFieldIdentifiers = [];
+            if (_modelRoutes is not { } nestedModelRoutes) {
+                _modelRoutes = nestedModelRoutes = [];
             } else {
-                routeModelFieldIdentifiers.Clear();
+                nestedModelRoutes.Clear();
             }
 
             Debug.Assert(Routes is not null);
             foreach (var route in Routes) {
                 var modelIdentifier = ModelIdentifier.Create(route);
-                var fieldIdentifier = FieldIdentifierExtension.WithPropertyPath(route);
-                if (!routeModelFieldIdentifiers.TryAdd(modelIdentifier, fieldIdentifier)) {
+                var modelRoute = FieldIdentifierExtension.WithPropertyPath(route);
+                if (!nestedModelRoutes.TryAdd(modelIdentifier, modelRoute)) {
                     throw new InvalidOperationException(
                         $"An enlistment in the {nameof(Routes)} parameter must be unique, ensuring that the type of the target model, regardless of the accessor's path, is not already included.");
                 }
@@ -117,21 +117,27 @@ public class ComponentValidatorRoutes : EditContextualComponentBase, IEditContex
         Debug.Assert(RoutesOwningComponentValidator is not null);
         var componentValidator = RoutesOwningComponentValidator;
 
-        var modelIdentifier = new ModelIdentifier(e.FieldIdentifier.Model);
-        if (modelIdentifier.Equals(_superEditContextModelIdentifier)) {
-            componentValidator.ValidateDirectField(e.FieldIdentifier);
+        // Scenario 1: Given () => City.Address.Street, then Model is Address and Street is FieldName 
+        var directFieldIdentifier = e.FieldIdentifier;
+        var directModelIdentifier = new ModelIdentifier(directFieldIdentifier.Model);
+        if (directModelIdentifier.Equals(_superEditContextModelIdentifier)) {
+            componentValidator.ValidateDirectField(directFieldIdentifier);
             goto notifyValidationStateChanged;
         }
 
-        Debug.Assert(_modelFieldIdentifiers is not null);
-        if (!_modelFieldIdentifiers.TryGetValue(modelIdentifier, out var modelFieldIdentifier)) {
+        Debug.Assert(_modelRoutes is not null);
+        // Scenario 1: Using Address as the ModelIdentifier key,
+        //  get the model route with City as the Model and City.Address as the FieldName
+        if (!_modelRoutes.TryGetValue(directModelIdentifier, out var nestedModelRoute)) {
             throw new InvalidOperationException(
-                $"The model of type {modelIdentifier.Model.GetType()} is unrecognized. Is it registered as a potencial route?");
+                $"The model of type {directModelIdentifier.Model.GetType()} is unrecognized. Is it registered as a potencial route?");
         }
 
-        var concenatedFieldName = $"{modelFieldIdentifier.FieldName}.{e.FieldIdentifier.FieldName}";
-        var concenatedFieldIdentifier = new FieldIdentifier(modelFieldIdentifier.Model, concenatedFieldName);
-        componentValidator.ValidateNestedField(e.FieldIdentifier, concenatedFieldIdentifier);
+        // Scenario 1: Concenate City.Address and Street
+        var nestedFieldPath = $"{nestedModelRoute.FieldName}.{directFieldIdentifier.FieldName}";
+        // Scenario 1: Build a FieldIdentifier with City as the Model and City.Address.Street as the FieldName
+        var nestedFieldIdentifier = new FieldIdentifier(nestedModelRoute.Model, nestedFieldPath);
+        componentValidator.ValidateNestedField(directFieldIdentifier, nestedFieldIdentifier);
 
         notifyValidationStateChanged:
         Debug.Assert(_ownEditContext is not null);
