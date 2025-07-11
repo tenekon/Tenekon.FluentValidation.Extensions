@@ -13,10 +13,6 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public abstract class ComponentValidatorBase : EditContextualComponentBase, IComponentValidator
 {
-    private class ComponentValidatorLookupKey;
-
-    internal static readonly object s_ownEditContextComponentValidatorLookupKey = new ComponentValidatorLookupKey();
-
     private readonly RenderFragment _renderComponentValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
     private readonly RenderFragment<RenderFragment?> _renderComponentValidatorRoutesFragment;
@@ -117,12 +113,6 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase, ICom
 
     void IComponentValidator.ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier) =>
         ValidateNestedField(directFieldIdentifier, nestedFieldIdentifier);
-
-    protected override void OnOwnEditContextChanged(EditContextChangedEventArgs args)
-    {
-        base.OnOwnEditContextChanged(args);
-        args.New.Properties[s_ownEditContextComponentValidatorLookupKey] = this;
-    }
 
     private void ApplyValidationStrategy(ValidationStrategy<object> validationStrategy) =>
         ConfigureValidationStrategy?.Invoke(validationStrategy);
@@ -285,24 +275,4 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase, ICom
 
     protected override void BuildRenderTree(RenderTreeBuilder builder) =>
         RenderComponentValidator(builder, _renderComponentValidatorContent);
-
-    protected override void DeinitializeOwnEditContext()
-    {
-        DeinitializeCurrentOwnEditContextPropertiesFluentComponentValidatorAssignment();
-        base.DeinitializeOwnEditContext();
-        return;
-
-        void DeinitializeCurrentOwnEditContextPropertiesFluentComponentValidatorAssignment()
-        {
-            if (_ownEditContext is null) {
-                return;
-            }
-
-            DeinitializeEditContextPropertiesFluentComponentValidatorAssignment(_ownEditContext);
-            return;
-
-            static void DeinitializeEditContextPropertiesFluentComponentValidatorAssignment(EditContext editContext) =>
-                editContext.Properties.Remove(s_ownEditContextComponentValidatorLookupKey);
-        }
-    }
 }

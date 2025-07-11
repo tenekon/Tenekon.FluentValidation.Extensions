@@ -7,9 +7,12 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public abstract class EditContextualComponentBase : ComponentBase, IEditContextualComponentTrait, IDisposable
 {
-    private class RootEditContextLookupKey;
+    private class RootEditContextPropertyLookupKey;
 
-    private static readonly object s_rootEditContextLookupKey = new RootEditContextLookupKey();
+    internal static readonly object s_rootEditContextPropertyLookupKey = new RootEditContextPropertyLookupKey();
+
+    private static readonly SharedEditContextPropertyClassValueAccessor<EditContext> s_rootEditContextPropertyAccessor =
+        new(s_rootEditContextPropertyLookupKey);
 
     internal bool _areOwnEditContextAndSuperEditContextEqual;
     internal bool _areOwnEditContextAndSuperEditContextNotEqual;
@@ -70,8 +73,8 @@ public abstract class EditContextualComponentBase : ComponentBase, IEditContextu
             if (areOwnEditContextAndSuperEditContextEqual) {
                 rootEditContext = superEditContext;
             } else {
-                if (superEditContext.Properties.TryGetValue(s_rootEditContextLookupKey, out var rootEditContext2)) {
-                    rootEditContext = (EditContext)rootEditContext2;
+                if (s_rootEditContextPropertyAccessor.TryGetPropertyValue(superEditContext, out var rootEditContext2)) {
+                    rootEditContext = rootEditContext2;
                 } else {
                     rootEditContext = superEditContext;
                 }
@@ -114,7 +117,7 @@ public abstract class EditContextualComponentBase : ComponentBase, IEditContextu
             _ownEditContextChangedSinceLastParametersSet = ownEditContextChanged;
 
             if (rootEditContextChanged) {
-                ownEditContext.Properties[s_rootEditContextLookupKey] = rootEditContext;
+                s_rootEditContextPropertyAccessor.OccupyProperty(ownEditContext, rootEditContext);
 
                 OnRootEditContextChanged(
                     new EditContextChangedEventArgs {
@@ -211,8 +214,7 @@ public abstract class EditContextualComponentBase : ComponentBase, IEditContextu
         _ownEditContext.OnFieldChanged -= OnValidateField;
         if (_areOwnEditContextAndSuperEditContextNotEqual) {
             // ISSUE: If two components are descendants of one edit context, then we cannot just remove the key.
-            // TODO: Implement counter-based key addition/removal
-            _ownEditContext.Properties.Remove(s_rootEditContextLookupKey);
+            s_rootEditContextPropertyAccessor.DisoccupyProperty(_ownEditContext);
             _ownEditContext.OnValidationRequested -= BubbleUpOnValidationRequested;
         }
 
