@@ -5,14 +5,93 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public abstract class EditContextualComponentBase : ComponentBase, IEditContextualComponentTrait, IDisposable
+public abstract class EditContextualComponentBase<T> : ComponentBase, IEditContextualComponentTrait, IDisposable
+    where T : IHandlingParametersTransition
 {
-    private class RootEditContextPropertyLookupKey;
+    static EditContextualComponentBase()
+    {
+        var transitioner1 = UpdateEditContextReferences;
 
-    internal static readonly object s_rootEditContextPropertyLookupKey = new RootEditContextPropertyLookupKey();
+        T.ParametersTransitionHandlerRegistry.RegisterHandler(
+            transitioner1,
+            HandlerAddingPosition.End
+            // TOOD: maybe unique object with debug token?
+        ); // $"{nameof(EditContextualComponentBase<>)}<{typeof(T)}>.{nameof(HandleParametersTransition)}"
 
-    private static readonly SharedEditContextPropertyClassValueAccessor<EditContext> s_rootEditContextPropertyAccessor =
-        new(s_rootEditContextPropertyLookupKey);
+        T.ParametersTransitionHandlerRegistry.RegisterHandler(
+            UpdateOwnEditContextPropertyOccupationOfRootEditContextLookupKey,
+            HandlerAddingPosition.End);
+
+        return;
+
+        static void UpdateEditContextReferences(ParametersTransition transition)
+        {
+            var component = (EditContextualComponentBase<T>)transition.EditContextualComponentBase;
+
+            var root = transition.RootContextTransition;
+            if (root.IsOldReferenceDifferentToNew) {
+                component.DeinitializeRootValidationMessageStore();
+                component.DeinitializeRootEditContext();
+
+                if (root.IsNewNonNull) {
+                    // TODO: Maybe we need to make it disable this in *Routes component
+                    component._rootEditContextValidationMessageStore = new ValidationMessageStore(root.New);
+                    component._rootEditContext = root.New;
+                }
+            }
+
+            var super = transition.SuperContextTransition;
+            if (super.IsOldReferenceDifferentToNew) {
+                component.DeinitializeSuperEditContext();
+
+                if (super.IsNewNonNull) {
+                    super.New.OnValidationRequested += component.OnValidateModel;
+                    component._superEditContext = super.New;
+                }
+            }
+
+            var own = transition.OwnContextTransition;
+            if (own.IsOldReferenceDifferentToNew) {
+                component.DeinitializeOwnEditContextValidationMessageStore();
+                component.DeinitializeOwnEditContext();
+
+                if (own.IsNewNonNull) {
+                    own.New.OnFieldChanged += component.OnValidateField;
+
+                    if (super.IsNewNonNull) {
+                        var isNewOwnReferenceNotEqualsToNewSuper = !ReferenceEquals(own.New, super.New);
+                        if (isNewOwnReferenceNotEqualsToNewSuper) {
+                            own.New.OnValidationRequested += component.BubbleUpOnValidationRequested;
+                        }
+                    }
+
+                    // TODO: Maybe we need to make it disable this in *Routes component
+                    component._ownEditContextValidationMessageStore = new ValidationMessageStore(own.New);
+                    component._ownEditContext = own.New;
+                }
+            }
+        }
+
+        static void UpdateOwnEditContextPropertyOccupationOfRootEditContextLookupKey(ParametersTransition transition)
+        {
+            if (transition.OwnContextTransition.IsOldReferenceDifferentToNew ||
+                transition.RootContextTransition.IsOldReferenceDifferentToNew) {
+                // TODO: && IsFirstTransition: false?
+                if (transition.OwnContextTransition is { IsOldNonNull: true }) {
+                    RootEditContextPropertyAccessorHolder.s_accessor.DisoccupyProperty(transition.OwnContextTransition.Old);
+                }
+
+                if (transition.OwnContextTransition.IsNewNonNull && transition.RootContextTransition.IsNewNonNull) {
+                    RootEditContextPropertyAccessorHolder.s_accessor.OccupyProperty(
+                        transition.OwnContextTransition.New,
+                        transition.RootContextTransition.New);
+                }
+            }
+        }
+    }
+
+    private int _isDisposed;
+    private bool _didParametersTransitionedOnce;
 
     internal bool _areOwnEditContextAndSuperEditContextEqual;
     internal bool _areOwnEditContextAndSuperEditContextNotEqual;
@@ -35,110 +114,73 @@ public abstract class EditContextualComponentBase : ComponentBase, IEditContextu
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    void IDisposable.Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
-
     EditContext? IEditContextualComponentTrait.OwnEditContext => null;
 
     protected override void OnParametersSet()
     {
-        ConfigureFluentComponentBaseOnParametersSet();
-        return;
+        /* We have three definitions of an edit context.
+         * 1. The root edit context is the one originating from an edit form.
+         * 2. The super edit context is the parent edit context. The super edit context can be the root edit context.
+         * 3. The own edit context is the operating edit context of this validator.
+         *    The own edit context can be either the root edit context, the super edit context or an new instance of an edit context.
+         */
+        var superEditContext = SuperEditContext;
+        if (superEditContext is null) {
+            throw new InvalidOperationException(
+                $"{GetType()} requires a cascading parameter of type {nameof(EditContext)}. For example, you can use {GetType()} inside an EditForm component.");
+        }
 
-        void ConfigureFluentComponentBaseOnParametersSet()
-        {
-            /* We have three definitions of an edit context.
-             * 1. The root edit context is the one originating from an edit form.
-             * 2. The super edit context is the parent edit context. The super edit context can be the root edit context.
-             * 3. The own edit context is the operating edit context of this validator.
-             *    The own edit context can be either the root edit context, the super edit context or an new instance of an edit context.
-             */
-            var superEditContext = SuperEditContext;
-            if (superEditContext is null) {
-                throw new InvalidOperationException(
-                    $"{GetType()} requires a cascading parameter of type {nameof(EditContext)}. For example, you can use {GetType()} inside an EditForm component.");
-            }
+        var ownEditContext = ((IEditContextualComponentTrait)this).OwnEditContext;
+        if (ownEditContext is null) {
+            throw new InvalidOperationException($"{GetType()} requires property {nameof(OwnEditContext)} being overriden.");
+        }
 
-            var ownEditContext = ((IEditContextualComponentTrait)this).OwnEditContext;
-            if (ownEditContext is null) {
-                throw new InvalidOperationException($"{GetType()} requires property {nameof(OwnEditContext)} being overriden.");
-            }
-
-            EditContext rootEditContext;
-            var areOwnEditContextAndSuperEditContextEqual = ReferenceEquals(ownEditContext, superEditContext);
-            var areOwnEditContextAndSuperEditContextNotEqual = !areOwnEditContextAndSuperEditContextEqual;
-            if (areOwnEditContextAndSuperEditContextEqual) {
-                rootEditContext = superEditContext;
+        EditContext rootEditContext;
+        var areOwnEditContextAndSuperEditContextEqual = ReferenceEquals(ownEditContext, superEditContext);
+        var areOwnEditContextAndSuperEditContextNotEqual = !areOwnEditContextAndSuperEditContextEqual;
+        if (areOwnEditContextAndSuperEditContextEqual) {
+            rootEditContext = superEditContext;
+        } else {
+            if (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(superEditContext, out var rootEditContext2)) {
+                rootEditContext = rootEditContext2;
             } else {
-                if (s_rootEditContextPropertyAccessor.TryGetPropertyValue(superEditContext, out var rootEditContext2)) {
-                    rootEditContext = rootEditContext2;
-                } else {
-                    rootEditContext = superEditContext;
-                }
-            }
-
-            var currentRootEditContext = _rootEditContext;
-            var rootEditContextChanged = !ReferenceEquals(currentRootEditContext, rootEditContext);
-            if (rootEditContextChanged) {
-                DeinitializeRootValidationMessageStore();
-                DeinitializeRootEditContext();
-                _rootEditContextValidationMessageStore = new ValidationMessageStore(rootEditContext);
-                _rootEditContext = rootEditContext;
-            }
-
-            var currentSuperEditContext = _superEditContext;
-            var superEditContextChanged = !ReferenceEquals(currentSuperEditContext, superEditContext);
-            if (superEditContextChanged) {
-                DeinitializeSuperEditContext();
-                superEditContext.OnValidationRequested += OnValidateModel;
-                _superEditContext = superEditContext;
-            }
-
-            var currentOwnEditContext = _ownEditContext;
-            var ownEditContextChanged = !ReferenceEquals(currentOwnEditContext, ownEditContext);
-            if (ownEditContextChanged) {
-                DeinitializeOwnEditContextValidationMessageStore();
-                DeinitializeOwnEditContext();
-                ownEditContext.OnFieldChanged += OnValidateField;
-                if (areOwnEditContextAndSuperEditContextNotEqual) {
-                    ownEditContext.OnValidationRequested += BubbleUpOnValidationRequested;
-                }
-                _ownEditContextValidationMessageStore = new ValidationMessageStore(ownEditContext);
-                _ownEditContext = ownEditContext;
-            }
-
-            _areOwnEditContextAndSuperEditContextEqual = areOwnEditContextAndSuperEditContextEqual;
-            _areOwnEditContextAndSuperEditContextNotEqual = areOwnEditContextAndSuperEditContextNotEqual;
-
-            _superEditContextChangedSinceLastParametersSet = superEditContextChanged;
-            _ownEditContextChangedSinceLastParametersSet = ownEditContextChanged;
-
-            if (rootEditContextChanged) {
-                s_rootEditContextPropertyAccessor.OccupyProperty(ownEditContext, rootEditContext);
-
-                OnRootEditContextChanged(
-                    new EditContextChangedEventArgs {
-                        Old = currentRootEditContext, New = rootEditContext
-                    });
-            }
-
-            if (superEditContextChanged) {
-                OnSuperEditContextChanged(
-                    new EditContextChangedEventArgs {
-                        Old = currentSuperEditContext, New = superEditContext
-                    });
-            }
-
-            if (ownEditContextChanged) {
-                OnOwnEditContextChanged(
-                    new EditContextChangedEventArgs {
-                        Old = currentOwnEditContext, New = ownEditContext
-                    });
+                rootEditContext = superEditContext;
             }
         }
+
+        var isFirstTransition = !_didParametersTransitionedOnce;
+        _didParametersTransitionedOnce = true;
+
+        var parametersTransition = new ParametersTransition {
+            EditContextualComponentBase = this,
+            OwnContextTransition = new EditContextTransition() {
+                Old = _ownEditContext,
+                New = ownEditContext,
+                IsFirstTransition = isFirstTransition
+            },
+            SuperContextTransition = new EditContextTransition {
+                Old = _superEditContext,
+                New = superEditContext,
+                IsFirstTransition = isFirstTransition
+            },
+            RootContextTransition = new EditContextTransition() {
+                Old = _rootEditContext,
+                New = rootEditContext,
+                IsFirstTransition = isFirstTransition
+            },
+        };
+
+        foreach (var registrationItem in T.ParametersTransitionHandlerRegistry.GetRegistrationItems()) {
+            registrationItem.Handler(parametersTransition);
+        }
+
+        // TODO: Replace below lines by parameters transition API
+
+        _areOwnEditContextAndSuperEditContextEqual = areOwnEditContextAndSuperEditContextEqual;
+        _areOwnEditContextAndSuperEditContextNotEqual = areOwnEditContextAndSuperEditContextNotEqual;
+
+        _superEditContextChangedSinceLastParametersSet = parametersTransition.SuperContextTransition.IsOldReferenceEqualsToNew;
+        _ownEditContextChangedSinceLastParametersSet = parametersTransition.OwnContextTransition.IsOldReferenceEqualsToNew;
     }
 
     protected virtual void OnValidateModel(object? sender, ValidationRequestedEventArgs e)
@@ -212,54 +254,56 @@ public abstract class EditContextualComponentBase : ComponentBase, IEditContextu
         }
 
         _ownEditContext.OnFieldChanged -= OnValidateField;
+
         if (_areOwnEditContextAndSuperEditContextNotEqual) {
-            // ISSUE: If two components are descendants of one edit context, then we cannot just remove the key.
-            s_rootEditContextPropertyAccessor.DisoccupyProperty(_ownEditContext);
             _ownEditContext.OnValidationRequested -= BubbleUpOnValidationRequested;
         }
 
         _ownEditContext = null;
     }
 
-    protected virtual void OnRootEditContextChanged(EditContextChangedEventArgs args)
-    {
-    }
-
-    protected virtual void OnSuperEditContextChanged(EditContextChangedEventArgs args)
-    {
-    }
-
-    protected virtual void OnOwnEditContextChanged(EditContextChangedEventArgs args)
-    {
-    }
+    #region Dispose
 
     /// <summary>Called to dispose this instance.</summary>
     /// <param name="disposing"><see langword="true" /> if called within <see cref="IDisposable.Dispose" />.</param>
     protected virtual void Dispose(bool disposing)
     {
-        DeinitializeRootValidationMessageStore();
-        DeinitializeRootEditContext();
-        DeinitializeSuperEditContext();
-        DeinitializeOwnEditContextValidationMessageStore();
-        DeinitializeOwnEditContext();
+        var isFirstTransition = !_didParametersTransitionedOnce;
+
+        var parametersTransition = new ParametersTransition {
+            IsDisposing = true,
+            EditContextualComponentBase = this,
+            OwnContextTransition = new EditContextTransition() {
+                Old = _ownEditContext,
+                New = null,
+                IsFirstTransition = isFirstTransition
+            },
+            SuperContextTransition = new EditContextTransition {
+                Old = _superEditContext,
+                New = null,
+                IsFirstTransition = isFirstTransition
+            },
+            RootContextTransition = new EditContextTransition() {
+                Old = _rootEditContext,
+                New = null,
+                IsFirstTransition = isFirstTransition
+            },
+        };
+
+        foreach (var registrationItem in T.ParametersTransitionHandlerRegistry.GetRegistrationItems()) {
+            registrationItem.Handler(parametersTransition);
+        }
     }
 
-    protected sealed class EditContextChangedEventArgs
+    void IDisposable.Dispose()
     {
-        /// <summary>
-        /// The previous edit context.
-        /// </summary>
-        /// <remarks>
-        /// Null if there was no prior context.
-        /// </remarks>
-        public required EditContext? Old { get; init; }
+        if (Interlocked.Exchange(ref _isDisposed, 1) == 1) {
+            return;
+        }
 
-        /// <summary>
-        /// The new edit context that replaced the prior one.
-        /// </summary>
-        /// <remarks>
-        /// Not raised when the context is being disposed. Use Deinitialize* methods instead.
-        /// </remarks>
-        public required EditContext New { get; init; }
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
+
+    #endregion
 }

@@ -11,8 +11,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public abstract class ComponentValidatorBase : EditContextualComponentBase, IComponentValidator
+public abstract class ComponentValidatorBase : EditContextualComponentBase<ComponentValidatorBase>, IComponentValidator,
+    IHandlingParametersTransition
 {
+    static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
+
     private readonly RenderFragment _renderComponentValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
     private readonly RenderFragment<RenderFragment?> _renderComponentValidatorRoutesFragment;

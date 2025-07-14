@@ -85,6 +85,14 @@ public class ComponentValidatorBasicTests : TestContext
         });
 
         context.Validate().ShouldBeTrue();
+
+
+        var cutOwnEditContex = cut.Instance.OwnEditContext;
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutOwnEditContex, out _, out var counter).ShouldBeTrue();
+        counter.ShouldBe(1);
+
+        DisposeComponents();
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(context, out _).ShouldBeFalse();
     }
 
     [Theory]
@@ -101,6 +109,13 @@ public class ComponentValidatorBasicTests : TestContext
         });
 
         context.Validate().ShouldBeFalse();
+
+        var cutOwnEditContex = cut.Instance.OwnEditContext;
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutOwnEditContex, out _, out var counter).ShouldBeTrue();
+        counter.ShouldBe(1);
+
+        DisposeComponents();
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutOwnEditContex, out _).ShouldBeFalse();
     }
 
     [Theory]
@@ -117,15 +132,22 @@ public class ComponentValidatorBasicTests : TestContext
         });
 
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Hello);
-        cut.Instance.OwnEditContext.NotifyFieldChanged(modelFieldIdentifier);
+        var cutOwnEditContex = cut.Instance.OwnEditContext;
+        cutOwnEditContex.NotifyFieldChanged(modelFieldIdentifier);
         var isValid = context.IsValid(modelFieldIdentifier);
         isValid.ShouldBeFalse();
+
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutOwnEditContex, out _, out var counter).ShouldBeTrue();
+        counter.ShouldBe(1);
+
+        DisposeComponents();
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutOwnEditContex, out _).ShouldBeFalse();
     }
 
     [Theory]
     [MemberData(nameof(ComponentValidatorBasicTestCases.All), MemberType = typeof(ComponentValidatorBasicTestCases))]
     public void ValidModel_NestedFieldValidationReturnsFalse<TComponentValidator>(ValidatorTestCase<TComponentValidator> testCase)
-        where TComponentValidator : ComponentValidatorBase
+        where TComponentValidator : ComponentValidatorBase, IDisposable
     {
         var model = new Model { Child = { Hello = "WRONG" } };
         var context = new EditContext(model);
@@ -135,12 +157,26 @@ public class ComponentValidatorBasicTests : TestContext
             testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
             parameters.Add<Expression<Func<object>>[]?>(x => x.Routes, [() => model.Child]);
         });
-
         var routes = cut.FindComponent<ComponentValidatorRoutes>();
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Child.Hello);
-        routes.Instance.OwnEditContext.NotifyFieldChanged(modelFieldIdentifier);
+        var routesOwnEditContext = routes.Instance.OwnEditContext;
+        routesOwnEditContext.NotifyFieldChanged(modelFieldIdentifier);
         var isValid = context.IsValid(modelFieldIdentifier);
         isValid.ShouldBeFalse();
+
+        var cutOwnEditContext = cut.Instance.OwnEditContext;
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutOwnEditContext, out _, out var cutOwnEditContextCounter)
+            .ShouldBeTrue();
+        cutOwnEditContextCounter.ShouldBe(2);
+
+        RootEditContextPropertyAccessorHolder.s_accessor
+            .TryGetPropertyValue(routesOwnEditContext, out _, out var routesOwnEditContextCounter)
+            .ShouldBeTrue();
+        routesOwnEditContextCounter.ShouldBe(2);
+
+        DisposeComponents();
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutOwnEditContext, out _).ShouldBeFalse();
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(routesOwnEditContext, out _).ShouldBeFalse();
     }
 }
 

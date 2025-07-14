@@ -8,7 +8,7 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 /// </summary>
 /// <param name="key">Must be unique across</param>
 /// <typeparam name="T"></typeparam>
-internal readonly struct SharedEditContextPropertyClassValueAccessor<T>(object key) where T : class
+internal readonly struct CounterBasedEditContextPropertyClassValueAccessor<T>(object key) where T : class
 {
     private static PropertyValue GetPropertyValue(object originalPropertyValue)
     {
@@ -40,6 +40,23 @@ internal readonly struct SharedEditContextPropertyClassValueAccessor<T>(object k
         return false;
     }
 
+    internal bool TryGetPropertyValue(EditContext owner, [NotNullWhen(true)] out T? value, out int counter)
+    {
+        if (!owner.Properties.TryGetValue(key, out var originalPropertyValue)) {
+            goto @false;
+        }
+
+        var propertyValue = GetPropertyValue(originalPropertyValue);
+        value = propertyValue.Value;
+        counter = propertyValue.Counter;
+        return true;
+
+        @false:
+        value = null;
+        counter = 0;
+        return false;
+    }
+
     public void OccupyProperty(EditContext owner, T value)
     {
         if (owner.Properties.TryGetValue(key, out var originalPropertyValue)) {
@@ -51,6 +68,7 @@ internal readonly struct SharedEditContextPropertyClassValueAccessor<T>(object k
             }
 
             propertyValue.Counter++;
+            return;
         }
 
         owner.Properties[key] = new PropertyValue(value, counter: 1);
@@ -70,8 +88,8 @@ internal readonly struct SharedEditContextPropertyClassValueAccessor<T>(object k
 
         owner.Properties.Remove(key);
     }
-    
-    internal class PropertyValue(T value, int counter)
+
+    private class PropertyValue(T value, int counter)
     {
         public T Value { get; set; } = value;
         internal int Counter { get; set; } = counter;

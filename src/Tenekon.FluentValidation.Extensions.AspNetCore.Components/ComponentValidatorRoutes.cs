@@ -16,8 +16,49 @@ file static class EditContextAccessor
 
 // This component is highly specialized and tighly coupled with the internals of EditContext.
 // The component must be the owner of super EditContext's event invocations, but does not want to be the owner of super EditContext
-public class ComponentValidatorRoutes : EditContextualComponentBase, IEditContextualComponentTrait, IComponentValidatorSubpathTrait
+public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentValidatorRoutes>, IEditContextualComponentTrait,
+    IComponentValidatorSubpathTrait, IHandlingParametersTransition
 {
+    static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
+
+    static ComponentValidatorRoutes()
+    {
+        HandlingParametersTransitionAccessor<ComponentValidatorRoutes>.ParametersTransitionHandlerRegistry.RegisterHandler(
+            CopyRootEditContextFieldReferencesToSuperEditContext,
+            // If we want to make the registry API public, we should consider to make adding position relative to already added handlers,
+            // because now it is sufficient to insert the handler at the start to fulfill the contract required by the above handler.
+            HandlerAddingPosition.Start);
+
+        return;
+
+        static void CopyRootEditContextFieldReferencesToSuperEditContext(ParametersTransition transition)
+        {
+            // We assume that own edit context never changes only once at first transition.
+
+            if (transition.SuperContextTransition.IsOldReferenceDifferentToNew || transition.OwnContextTransition.IsFirstTransition) {
+                if (transition.SuperContextTransition.IsNewNonNull && transition.OwnContextTransition.IsNewNonNull) {
+                    var newSuperEditContext = transition.SuperContextTransition.New;
+                    var newOwnEditContext = transition.OwnContextTransition.New;
+
+                    // ISSUE:
+                    //  The problem is, that root edit context may become super edit context, then super edit references of field states
+                    //  and properties are copied to new own edit context, thus it is problematic to occupy counter-based properties before
+                    //  and then deoccupy counter-based properties after the copying.
+                    // SOLUTION:
+                    //  Copy field references before any mutation of any edit context on every parameters transition.
+
+                    // Cascade EditContext._fieldStates
+                    var editContextFieldStatesMemberAccessor = EditContextFieldStatesMemberAccessor;
+                    var fieldStates = editContextFieldStatesMemberAccessor.GetValue(newSuperEditContext);
+                    editContextFieldStatesMemberAccessor.SetValue(newOwnEditContext, fieldStates);
+
+                    // Cascade EditContext.Properties
+                    EditContextAccessor.GetProperties(newOwnEditContext) = EditContextAccessor.GetProperties(newSuperEditContext);
+                }
+            }
+        }
+    }
+
     private const string EditContextFieldStatesFieldName = "_fieldStates";
 
     private static readonly object s_modelSentinel = new();
@@ -69,18 +110,6 @@ public class ComponentValidatorRoutes : EditContextualComponentBase, IEditContex
         Debug.Assert(_superEditContext is not null);
         if (_superEditContextChangedSinceLastParametersSet) {
             _superEditContextModelIdentifier = new ModelIdentifier(_superEditContext.Model);
-        }
-
-        if (_superEditContextChangedSinceLastParametersSet || _ownEditContextChangedSinceLastParametersSet) {
-            Debug.Assert(_ownEditContext is not null);
-
-            // Cascade EditContext._fieldStates
-            var editContextFieldStatesMemberAccessor = EditContextFieldStatesMemberAccessor;
-            var fieldStates = editContextFieldStatesMemberAccessor.GetValue(_superEditContext);
-            editContextFieldStatesMemberAccessor.SetValue(_ownEditContext, fieldStates);
-
-            // Cascade EditContext.Properties
-            EditContextAccessor.GetProperties(_ownEditContext) = EditContextAccessor.GetProperties(_superEditContext);
         }
 
         return;
