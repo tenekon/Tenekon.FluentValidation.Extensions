@@ -87,7 +87,7 @@ For **multi-step or wizard-style forms** where nested submodels determine what g
 <EditForm Model="Model">
     <ComponentValidatorRootpath 
         ValidatorType="typeof(MyValidator)"
-        Routes="new Expression<Func<object>>[] { () => Model.Step1, () => Model.Step2 }">
+        Routes="[() => Model.Step1, () => Model.Step2]">
         <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
     </ComponentValidatorRootpath>
 </EditForm>
@@ -114,7 +114,7 @@ Combine scoped submodel validation with route awareness (e.g. wizard sections).
     <ComponentValidatorSubpath 
         Model="Model.StepData" 
         ValidatorType="typeof(StepValidator)"
-        Routes="new Expression<Func<object>>[] { () => Model.StepData.Section1, () => Model.StepData.Section2 }">
+        Routes="[() => Model.StepData.Section1, () => Model.StepData.Section2]">
         <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
     </ComponentValidatorSubpath>
 </EditForm>
@@ -138,7 +138,7 @@ Use when you want to decouple routing logic into a `<ComponentValidatorRoutes></
 ```razor
 <EditForm Model="Model">
     <ComponentValidatorRootpath ValidatorType="typeof(MyValidator)">
-        <ComponentValidatorRoutes>
+        <ComponentValidatorRoutes Routes="[() => Model.PartA, () => Model.PartB]">
             <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
         </ComponentValidatorRoutes>
     </ComponentValidatorRootpath>
@@ -164,7 +164,7 @@ Use to nest `ComponentValidatorRoutes` manually inside a scoped submodel validat
 ```razor
 <EditForm Model="Model">
     <ComponentValidatorSubpath Model="Model.Step" ValidatorType="typeof(StepValidator)">
-        <ComponentValidatorRoutes>
+        <ComponentValidatorRoutes Routes="[() => Model.PartA, () => Model.PartB]">
             <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
         </ComponentValidatorRoutes>
     </ComponentValidatorSubpath>

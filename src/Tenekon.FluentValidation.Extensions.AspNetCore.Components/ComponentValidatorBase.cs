@@ -150,20 +150,19 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     private void ClearValidationMessageStores()
     {
-        Debug.Assert(_ownEditContextValidationMessageStore is not null);
-        _ownEditContextValidationMessageStore.Clear();
-        _rootEditContextValidationMessageStore?.Clear();
+        Debug.Assert(_rootEditContextValidationMessageStore is not null);
+        _rootEditContextValidationMessageStore.Clear();
+        _ownEditContextValidationMessageStore?.Clear();
     }
 
     private void AddValidationMessageToStores(FieldIdentifier fieldIdentifier, string errorMessage)
     {
-        Debug.Assert(_ownEditContextValidationMessageStore is not null);
-        _ownEditContextValidationMessageStore.Add(fieldIdentifier, errorMessage);
+        Debug.Assert(_rootEditContextValidationMessageStore is not null);
+        _rootEditContextValidationMessageStore.Add(fieldIdentifier, errorMessage);
 
-        if (_areOwnEditContextAndSuperEditContextNotEqual) {
-            Debug.Assert(_rootEditContextValidationMessageStore is not null);
-            _rootEditContextValidationMessageStore.Add(fieldIdentifier, errorMessage);
-        }
+        // REMINDER: own edit context validation store can be null,
+        // if own edit context == super edit context == root edit context 
+        _ownEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
     }
 
     private void ValidateModel()
@@ -206,7 +205,6 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     private void ValidateDirectField(FieldIdentifier fieldIdentifier)
     {
         Debug.Assert(_ownEditContext is not null);
-        Debug.Assert(_ownEditContextValidationMessageStore is not null);
         Debug.Assert(_validator is not null);
 
         if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(fieldIdentifier.Model.GetType())) {
@@ -243,7 +241,6 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     {
         Debug.Assert(_validator is not null);
         Debug.Assert(_ownEditContext is not null);
-        Debug.Assert(_ownEditContextValidationMessageStore is not null);
 
         if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(nestedFieldIdentifier.Model.GetType())) {
             Logger?.LogWarning(

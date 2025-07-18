@@ -9,6 +9,7 @@
   - [Packages](#packages)
     - [`Tenekon.FluentValidation.Extensions.AspNetCore.Components`](#tenekonfluentvalidationextensionsaspnetcorecomponents)
     - [Features](#features)
+    - [Documentation \& Resources](#documentation--resources)
     - [Installation](#installation)
     - [Usage](#usage)
     - [Target Framework](#target-framework)
@@ -26,8 +27,6 @@
 
 An extension to integrate [FluentValidation](https://fluentvalidation.net/) with ASP.NET Core Components (Blazor). This library enhances component-level validation in Blazor applications using FluentValidation.
 
-> :open_book: Looking for the [Component Validator Cookbook](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md) that covers all scenarios? [Click here](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md).
-
 ---
 
 ### Features
@@ -36,6 +35,11 @@ An extension to integrate [FluentValidation](https://fluentvalidation.net/) with
 - 🔁 Component-level validator injection
 - 🧩 Validator components are nestable
 - 🚀 Optimized with FastExpressionCompiler
+
+### Documentation & Resources
+
+- :open_book: **Cookbook**: [Component Validator Cookbook](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md) — Examples & use cases for all common and advanced scenarios.
+- :microscope: **Flow Logic**: [Flow Logic Diagram](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/FLOWLOGIC.md) — Visual guide to how component validators interact with each other and Blazor's `EditContext`.
 
 ### Installation
 
@@ -73,8 +77,6 @@ builder.Services.AddValidatorsFromAssemblyContaining<MyModelValidator>();
     <button type="submit">Submit</button>
 </EditForm>
 ```
-
-Looking for more advanced scenarios? Read the [Component Validator Cookbook](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md).
 
 ### Target Framework
 

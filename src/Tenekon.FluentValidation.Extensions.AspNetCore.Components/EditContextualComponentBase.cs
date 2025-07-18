@@ -52,22 +52,24 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
             var own = transition.OwnContextTransition;
             if (own.IsOldReferenceDifferentToNew) {
-                component.DeinitializeOwnEditContextValidationMessageStore();
                 component.DeinitializeOwnEditContext();
 
                 if (own.IsNewNonNull) {
                     own.New.OnFieldChanged += component.OnValidateField;
-
-                    if (super.IsNewNonNull) {
-                        var isNewOwnReferenceNotEqualsToNewSuper = !ReferenceEquals(own.New, super.New);
-                        if (isNewOwnReferenceNotEqualsToNewSuper) {
-                            own.New.OnValidationRequested += component.BubbleUpOnValidationRequested;
-                        }
-                    }
-
-                    // TODO: Maybe we need to make it disable this in *Routes component
-                    component._ownEditContextValidationMessageStore = new ValidationMessageStore(own.New);
                     component._ownEditContext = own.New;
+                }
+            }
+
+            if (own.IsOldReferenceDifferentToNew || super.IsOldReferenceDifferentToNew) {
+                component.DeinitializeOwnEditContextValidationMessageStore();
+
+                if (own.IsNewNonNull && super.IsNewNonNull) {
+                    var isNewOwnReferenceDifferentToNewSuper = !ReferenceEquals(own.New, super.New);
+                    if (isNewOwnReferenceDifferentToNewSuper) {
+                        own.New.OnValidationRequested += component.BubbleUpOnValidationRequested;
+                        // TODO: Maybe we need to make it disable this in *Routes component
+                        component._ownEditContextValidationMessageStore = new ValidationMessageStore(own.New);
+                    }
                 }
             }
         }
@@ -97,7 +99,6 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
     internal bool _areOwnEditContextAndSuperEditContextNotEqual;
     internal EditContext? _ownEditContext;
     internal EditContext? _superEditContext;
-    internal bool _ownEditContextChangedSinceLastParametersSet;
     internal bool _superEditContextChangedSinceLastParametersSet;
 
     internal EditContext? _rootEditContext;
@@ -180,7 +181,6 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         _areOwnEditContextAndSuperEditContextNotEqual = areOwnEditContextAndSuperEditContextNotEqual;
 
         _superEditContextChangedSinceLastParametersSet = parametersTransition.SuperContextTransition.IsOldReferenceEqualsToNew;
-        _ownEditContextChangedSinceLastParametersSet = parametersTransition.OwnContextTransition.IsOldReferenceEqualsToNew;
     }
 
     protected virtual void OnValidateModel(object? sender, ValidationRequestedEventArgs e)

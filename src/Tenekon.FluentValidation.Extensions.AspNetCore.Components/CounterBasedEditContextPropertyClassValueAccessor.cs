@@ -28,33 +28,27 @@ internal readonly struct CounterBasedEditContextPropertyClassValueAccessor<T>(ob
     public bool TryGetPropertyValue(EditContext owner, [NotNullWhen(true)] out T? value)
     {
         if (!owner.Properties.TryGetValue(key, out var originalPropertyValue)) {
-            goto @false;
+            value = null;
+            return false;
         }
 
         var propertyValue = GetPropertyValue(originalPropertyValue);
         value = propertyValue.Value;
         return true;
-
-        @false:
-        value = null;
-        return false;
     }
 
     internal bool TryGetPropertyValue(EditContext owner, [NotNullWhen(true)] out T? value, out int counter)
     {
         if (!owner.Properties.TryGetValue(key, out var originalPropertyValue)) {
-            goto @false;
+            value = null;
+            counter = 0;
+            return false;
         }
 
         var propertyValue = GetPropertyValue(originalPropertyValue);
         value = propertyValue.Value;
         counter = propertyValue.Counter;
         return true;
-
-        @false:
-        value = null;
-        counter = 0;
-        return false;
     }
 
     public void OccupyProperty(EditContext owner, T value)
