@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public abstract class EditContextualComponentBase<T> : ComponentBase, IEditContextualComponentTrait, IDisposable
+public abstract class EditContextualComponentBase<T> : ComponentBase, IEditContextualComponentTrait, IDisposable, IAsyncDisposable
     where T : IHandlingParametersTransition
 {
     static EditContextualComponentBase()
@@ -92,7 +92,6 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         }
     }
 
-    private int _isDisposed;
     private bool _didParametersTransitionedOnce;
 
     internal bool _areOwnEditContextAndSuperEditContextEqual;
@@ -117,7 +116,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
     EditContext? IEditContextualComponentTrait.OwnEditContext => null;
 
-    protected override void OnParametersSet()
+    protected override Task OnParametersSetAsync()
     {
         /* We have three definitions of an edit context.
          * 1. The root edit context is the one originating from an edit form.
@@ -179,8 +178,8 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
         _areOwnEditContextAndSuperEditContextEqual = areOwnEditContextAndSuperEditContextEqual;
         _areOwnEditContextAndSuperEditContextNotEqual = areOwnEditContextAndSuperEditContextNotEqual;
-
         _superEditContextChangedSinceLastParametersSet = parametersTransition.SuperContextTransition.IsOldReferenceEqualsToNew;
+        return Task.CompletedTask;
     }
 
     protected virtual void OnValidateModel(object? sender, ValidationRequestedEventArgs e)
@@ -262,12 +261,16 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         _ownEditContext = null;
     }
 
-    #region Dispose
+    #region Disposal Behaviour
 
-    /// <summary>Called to dispose this instance.</summary>
-    /// <param name="disposing"><see langword="true" /> if called within <see cref="IDisposable.Dispose" />.</param>
-    protected virtual void Dispose(bool disposing)
+    private int _disposalState;
+
+    protected virtual void DisposeCommon()
     {
+        if ((Interlocked.Or(ref _disposalState, (int)DisposalStates.CommonDisposed) & (int)DisposalStates.CommonDisposed) != 0) {
+            return;
+        }
+
         var isFirstTransition = !_didParametersTransitionedOnce;
 
         var parametersTransition = new ParametersTransition {
@@ -295,14 +298,43 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         }
     }
 
+    /// <summary>Called to dispose this instance.</summary>
+    /// <param name="disposing"><see langword="true" /> if called within <see cref="IDisposable.Dispose" />.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+    }
+
     void IDisposable.Dispose()
     {
-        if (Interlocked.Exchange(ref _isDisposed, 1) == 1) {
+        if ((Interlocked.Or(ref _disposalState, (int)DisposalStates.SyncDisposed) & (int)DisposalStates.SyncDisposed) != 0) {
             return;
         }
 
+        DisposeCommon();
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
+    }
+
+    public virtual ValueTask DisposeAsyncCore() => ValueTask.CompletedTask;
+
+    public async ValueTask DisposeAsync()
+    {
+        if ((Interlocked.Or(ref _disposalState, (int)DisposalStates.AsyncDisposed) & (int)DisposalStates.AsyncDisposed) != 0) {
+            return;
+        }
+
+        await DisposeAsyncCore();
+        DisposeCommon();
+        Dispose(disposing: false);
+        GC.SuppressFinalize(this);
+    }
+
+    [Flags]
+    private enum DisposalStates
+    {
+        SyncDisposed = 1 << 0,
+        AsyncDisposed = 1 << 1,
+        CommonDisposed = 1 << 2
     }
 
     #endregion

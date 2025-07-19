@@ -22,6 +22,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     private readonly Action<ValidationStrategy<object>> _applyValidationStrategyAction;
     private bool _havingValidatorSetExplicitly;
     private IValidator? _validator;
+    private ServiceScopeSource _serviceScopeSource;
 
     /* TODO: Make pluggable */
     // internal readonly LeafComponentValidatorContext _leafComponentValidatorContext = new();
@@ -38,9 +39,9 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 #pragma warning disable BL0007 // Component parameters should be auto properties
     public IValidator? Validator {
 #pragma warning restore BL0007 // Component parameters should be auto properties
-        get => _validator;
+        get;
         set {
-            _validator = value;
+            field = value;
             _havingValidatorSetExplicitly = value is not null;
         }
     }
@@ -127,25 +128,104 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         //     _leafComponentValidatorContext;
     }
 
-    private void ConfigureOnParametersSet()
+    private async Task ConfigureOnParametersSetAsync()
     {
+        var serviceScopeSource = new ServiceScopeSource(ServiceProvider);
+
         // We do not allow to set the validator Explicitly and having specified the validator type as the same type 
         if (!(_havingValidatorSetExplicitly ^ ValidatorType is not null)) {
             throw new InvalidOperationException(
-                $"{GetType()} requires either the parameter {nameof(Validator)} of type {nameof(IValidator)} or {nameof(ValidatorType)} of type {nameof(Type)}");
+                $"{GetType()} requires either the parameter {nameof(Validator)} of type {nameof(IValidator)} or {nameof(ValidatorType)} of type {nameof(Type)}, but not both.");
         }
 
         var validatorType = ValidatorType;
+        // Whenever validator type is not null AND the validator type of the not yet or already materialized validator differs from that
+        // validator type, then recreate.
         if (validatorType is not null && _validator?.GetType() != validatorType) {
-            Debug.Assert(ServiceProvider is not null);
-            _validator = (IValidator)ServiceProvider.GetRequiredService(validatorType);
+            if (ServiceScopeSource.TryAcquireInitialization(ref serviceScopeSource)) {
+                await DeinitalizeServiceScopeSourceAsync();
+                // ReSharper disable once MethodHasAsyncOverload
+                DeinitalizeServiceScopeSource();
+                ServiceScopeSource.Initialize(ref serviceScopeSource, ref _serviceScopeSource, this);
+            }
+
+            _validator = (IValidator)serviceScopeSource.Value.ServiceProvider.GetRequiredService(validatorType);
+        } else {
+            Debug.Assert(Validator is not null);
+            _validator = Validator;
         }
     }
 
-    protected override void OnParametersSet()
+    private struct ServiceScopeSource(IServiceProvider? serviceProvider) : IDisposable, IAsyncDisposable
     {
-        ConfigureOnParametersSet();
-        base.OnParametersSet();
+        internal static ServiceScopeSource None { get; } = default;
+
+        private readonly IServiceProvider? _serviceProvider = serviceProvider;
+        private AsyncServiceScope? _asyncServiceScope;
+        private int _state;
+
+        public readonly AsyncServiceScope Value => _asyncServiceScope ?? throw new InvalidOperationException();
+
+        public static bool TryAcquireInitialization(ref ServiceScopeSource source)
+        {
+            if ((Interlocked.Or(ref source._state, (int)States.Initialized) & (int)States.Initialized) != 0) {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static void Initialize(ref ServiceScopeSource source, ref ServiceScopeSource target, object caller)
+        {
+            if (source._serviceProvider is null) {
+                throw new InvalidOperationException(
+                    $"{caller.GetType()} requires a dependency injection available value of type {nameof(IValidator)}.");
+            }
+
+            source._asyncServiceScope ??= source._serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
+            target = source;
+        }
+
+        public void Dispose()
+        {
+            if (!_asyncServiceScope.HasValue) {
+                return;
+            }
+
+            if ((Interlocked.Or(ref _state, (int)States.SyncDisposed) & (int)(States.SyncDisposed | States.Initialized)) !=
+                (int)States.Initialized) {
+                return;
+            }
+
+            Value.Dispose();
+        }
+
+        public bool TryAcquireAsyncDisposal() =>
+            (Interlocked.Or(ref _state, (int)States.AsyncDisposed) & (int)(States.AsyncDisposed | States.Initialized)) ==
+            (int)States.Initialized;
+
+        public readonly ValueTask DisposeAsync()
+        {
+            if (!_asyncServiceScope.HasValue) {
+                return ValueTask.CompletedTask;
+            }
+
+            return Value.DisposeAsync();
+        }
+
+        [Flags]
+        private enum States
+        {
+            Initialized = 1 << 0,
+            SyncDisposed = 1 << 1,
+            AsyncDisposed = 1 << 2,
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await ConfigureOnParametersSetAsync();
+        await base.OnParametersSetAsync();
     }
 
     private void ClearValidationMessageStores()
@@ -275,4 +355,35 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     protected override void BuildRenderTree(RenderTreeBuilder builder) =>
         RenderComponentValidator(builder, _renderComponentValidatorContent);
+
+    private void DeinitalizeServiceScopeSource()
+    {
+        // ReSharper disable once InlineTemporaryVariable
+        ref var serviceScopeSource = ref _serviceScopeSource;
+        serviceScopeSource.Dispose();
+    }
+
+    private async Task DeinitalizeServiceScopeSourceAsync()
+    {
+        // ReSharper disable once InlineTemporaryVariable
+        ref var serviceScopeSource = ref _serviceScopeSource;
+        if (serviceScopeSource.TryAcquireAsyncDisposal()) {
+            await serviceScopeSource.DisposeAsync();
+        }
+    }
+
+    public override async ValueTask DisposeAsyncCore()
+    {
+        await DeinitalizeServiceScopeSourceAsync();
+        await base.DisposeAsyncCore();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) {
+            DeinitalizeServiceScopeSource();
+        }
+
+        base.Dispose(disposing);
+    }
 }

@@ -38,7 +38,7 @@ public interface IComponentValidatorSubpathTrait
         HasOwnEditContextBeenSetExplicitly = editContext is not null;
     }
 
-    void OnSubpathParametersSet()
+    Task OnSubpathParametersSetAsync()
     {
         if (HasOwnEditContextBeenSetExplicitly && Model is not null) {
             // We have OwnEditContext and Model
@@ -55,6 +55,8 @@ public interface IComponentValidatorSubpathTrait
         if (Model is not null && !ReferenceEquals(Model, OwnEditContext?.Model)) {
             OwnEditContext = new EditContext(Model!);
         }
+        
+        return Task.CompletedTask;
     }
 
     public sealed class ErrorContext(object? provocateur, ErrorIdentifier identifier)

@@ -91,7 +91,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
     EditContext? IComponentValidatorSubpathTrait.OwnEditContext { get; set; }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (RoutesOwningComponentValidator is null) {
             throw new InvalidOperationException(
@@ -102,8 +102,8 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
             throw new InvalidOperationException($"{GetType().Name} requires a {nameof(Routes)} parameter.");
         }
 
-        ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSet();
-        base.OnParametersSet();
+        await ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSetAsync();
+        await base.OnParametersSetAsync();
 
         InitializeModelRoutes();
 

@@ -48,9 +48,9 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
         ((IComponentValidatorSubpathTrait)this).OwnEditContext ?? throw new InvalidOperationException();
 
     // ReSharper disable once MemberHidesInterfaceMemberWithDefaultImplementation
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSet();
+        await ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSetAsync();
 
         var ownEditContext = ((IComponentValidatorSubpathTrait)this).OwnEditContext;
         Debug.Assert(ownEditContext is not null);
@@ -58,7 +58,7 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
             ValidatorType = typeof(IValidator<>).MakeGenericType(ownEditContext.Model.GetType());
         }
 
-        base.OnParametersSet();
+        await base.OnParametersSetAsync();
     }
 
     /* TODO: Make pluggable */
