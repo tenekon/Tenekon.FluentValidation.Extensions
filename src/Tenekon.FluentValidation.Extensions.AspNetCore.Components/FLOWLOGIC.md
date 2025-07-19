@@ -1,9 +1,9 @@
 # Flow logic
 
+<!-- omit from toc -->
 ## Table of Contents
 
 - [Flow logic](#flow-logic)
-  - [Table of Contents](#table-of-contents)
   - [Component Interaction](#component-interaction)
   - [Event Handling](#event-handling)
 
