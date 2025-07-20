@@ -21,7 +21,7 @@
 ## Packages
 
 | Package                                                     | Description                                  |
-|-------------------------------------------------------------|----------------------------------------------|
+| ----------------------------------------------------------- | -------------------------------------------- |
 | `Tenekon.FluentValidation.Extensions.AspNetCore.Components` | Core Blazor integration for FluentValidation |
 
 ### `Tenekon.FluentValidation.Extensions.AspNetCore.Components`
@@ -40,11 +40,10 @@ library enhances component-level validation in Blazor applications using FluentV
 
 ### Documentation & Resources
 
-- :open_book: **Cookbook
-  **: [Component Validator Cookbook](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md) —
+- :open_book: **Cookbook**: [Component Validator Cookbook](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/COOKBOOK.md) —
   Examples & use cases for all common and advanced scenarios.
-- :microscope: **Flow Logic
-  **: [Flow Logic Diagram](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/FLOWLOGIC.md) — Visual guide to
+- :bricks: **Design** [Component Design Document](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/DESIGN.md) — Architectural approach of the components, and their integration with Blazor's EditContext.
+- :microscope: **Flow Logic**: [Flow Logic Diagram](src/Tenekon.FluentValidation.Extensions.AspNetCore.Components/FLOWLOGIC.md) — Visual guide to
   how component validators interact with each other and Blazor's `EditContext`.
 
 ### Installation

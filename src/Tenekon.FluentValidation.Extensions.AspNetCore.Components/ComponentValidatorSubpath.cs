@@ -10,9 +10,9 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     private static Exception DefaultExceptionFactoryImpl(IComponentValidatorSubpathTrait.ErrorContext context)
     {
         return context.Identifier switch {
-            IComponentValidatorSubpathTrait.ErrorIdentifier.OwnEditContextAndModel => new InvalidOperationException(
+            IComponentValidatorSubpathTrait.ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
                 $"{context.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter, but not both."),
-            IComponentValidatorSubpathTrait.ErrorIdentifier.NoOwnEditContextAndNoModel => new InvalidOperationException(
+            IComponentValidatorSubpathTrait.ErrorIdentifier.NoActorEditContextAndNoModel => new InvalidOperationException(
                 $"{context.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter."),
             _ => IComponentValidatorSubpathTrait.DefaultExceptionFactory(context)
         };
@@ -36,33 +36,33 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
 #pragma warning disable BL0007 // Component parameters should be auto properties
     public EditContext? EditContext {
 #pragma warning restore BL0007 // Component parameters should be auto properties
-        get => ((IComponentValidatorSubpathTrait)this).OwnEditContext;
-        set => ((IComponentValidatorSubpathTrait)this).SetOwnEditContextExplicitly(value);
+        get => ((IComponentValidatorSubpathTrait)this).ActorEditContext;
+        set => ((IComponentValidatorSubpathTrait)this).SetActorEditContextExplicitly(value);
     }
 
-    bool IComponentValidatorSubpathTrait.HasOwnEditContextBeenSetExplicitly { get; set; }
+    bool IComponentValidatorSubpathTrait.HasActorEditContextBeenSetExplicitly { get; set; }
     object? IComponentValidatorSubpathTrait.Model { get; set; }
-    EditContext? IComponentValidatorSubpathTrait.OwnEditContext { get; set; }
+    EditContext? IComponentValidatorSubpathTrait.ActorEditContext { get; set; }
 
-    EditContext? IEditContextualComponentTrait.OwnEditContext =>
-        ((IComponentValidatorSubpathTrait)this).OwnEditContext ?? throw new InvalidOperationException();
+    EditContext? IEditContextualComponentTrait.ActorEditContext =>
+        ((IComponentValidatorSubpathTrait)this).ActorEditContext ?? throw new InvalidOperationException();
 
     // ReSharper disable once MemberHidesInterfaceMemberWithDefaultImplementation
     protected override async Task OnParametersSetAsync()
     {
         await ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSetAsync();
 
-        var ownEditContext = ((IComponentValidatorSubpathTrait)this).OwnEditContext;
-        Debug.Assert(ownEditContext is not null);
+        var actorEditContext = ((IComponentValidatorSubpathTrait)this).ActorEditContext;
+        Debug.Assert(actorEditContext is not null);
         if (Validator is null && ValidatorType is null) {
-            ValidatorType = typeof(IValidator<>).MakeGenericType(ownEditContext.Model.GetType());
+            ValidatorType = typeof(IValidator<>).MakeGenericType(actorEditContext.Model.GetType());
         }
 
         await base.OnParametersSetAsync();
     }
 
     /* TODO: Make pluggable */
-    // protected override void OnOwnEditContextChanged(EditContextChangedEventArgs args)
+    // protected override void OnActorEditContextChanged(EditContextChangedEventArgs args)
     // {
     //     RootComponentValidatorContext rootComponentValidatorContext;
     //     if (args.New.Properties.TryGetValue(ComponentValidatorContextLookupKey.Standard, out var validatorContext)) {
@@ -76,13 +76,13 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     //     }
     //     
     //     rootComponentValidatorContext.AttachValidatorContext(_leafComponentValidatorContext);
-    //     base.OnOwnEditContextChanged(args);
+    //     base.OnActorEditContextChanged(args);
     // }
 
     /* TODO: Make pluggable */
-    // protected override void DeinitializeOwnEditContext()
+    // protected override void DeinitializeActorEditContext()
     // {
-    //     var editContext = _ownEditContext;
+    //     var editContext = _actorEditContext;
     //     if (editContext is null) {
     //         return;
     //     }
@@ -96,6 +96,6 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     //         editContext.Properties.Remove(ComponentValidatorContextLookupKey.Standard);
     //     }
     //
-    //     base.DeinitializeOwnEditContext();
+    //     base.DeinitializeActorEditContext();
     // }
 }

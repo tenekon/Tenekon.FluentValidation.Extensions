@@ -12,48 +12,57 @@ file static class EditContextAccessor
 {
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "<Properties>k__BackingField")]
     public static extern ref EditContextProperties GetProperties(EditContext editContext);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "<Model>k__BackingField")]
+    public static extern ref object GetModel(EditContext editContext);
 }
 
 // This component is highly specialized and tighly coupled with the internals of EditContext.
-// The component must be the owner of super EditContext's event invocations, but does not want to be the owner of super EditContext
+// The component wants to have an actor edit context with field references of the ancestor edit context, except the event invocations,
+//   because the components alone wants to act on OnFieldChanged and OnValidationRequested independently from the ancestor edit context.
+// CASCADING PARAMETER DEPENDENCIES:
+//   IComponentValidator provided by ComponentValidatorSubpath or ComponentValidatorRootpath
 public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentValidatorRoutes>, IEditContextualComponentTrait,
-    IComponentValidatorSubpathTrait, IHandlingParametersTransition
+    IHandlingParametersTransition
 {
     static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
 
     static ComponentValidatorRoutes()
     {
         HandlingParametersTransitionAccessor<ComponentValidatorRoutes>.ParametersTransitionHandlerRegistry.RegisterHandler(
-            CopyRootEditContextFieldReferencesToSuperEditContext,
+            CopyAncestorEditContextFieldReferencesToActorEditContext,
             // If we want to make the registry API public, we should consider to make adding position relative to already added handlers,
             // because now it is sufficient to insert the handler at the start to fulfill the contract required by the above handler.
             HandlerAddingPosition.Start);
 
         return;
 
-        static void CopyRootEditContextFieldReferencesToSuperEditContext(ParametersTransition transition)
+        static void CopyAncestorEditContextFieldReferencesToActorEditContext(ParametersTransition transition)
         {
-            // We assume that own edit context never changes only once at first transition.
+            // We assume that actor edit context never changes only once at first transition.
 
-            if (transition.SuperContextTransition.IsOldReferenceDifferentToNew || transition.OwnContextTransition.IsFirstTransition) {
-                if (transition.SuperContextTransition.IsNewNonNull && transition.OwnContextTransition.IsNewNonNull) {
-                    var newSuperEditContext = transition.SuperContextTransition.New;
-                    var newOwnEditContext = transition.OwnContextTransition.New;
+            if (transition.AncestorContextTransition.IsOldReferenceDifferentToNew || transition.ActorContextTransition.IsFirstTransition) {
+                if (transition.AncestorContextTransition.IsNewNonNull && transition.ActorContextTransition.IsNewNonNull) {
+                    var newAncestorEditContext = transition.AncestorContextTransition.New;
+                    var newActorEditContext = transition.ActorContextTransition.New;
 
                     // ISSUE:
-                    //  The problem is, that root edit context may become super edit context, then super edit references of field states
-                    //  and properties are copied to new own edit context, thus it is problematic to occupy counter-based properties before
-                    //  and then deoccupy counter-based properties after the copying.
-                    // SOLUTION:
+                    //  The problem is, that root edit context may become the ancestor edit context, then the ancestor edit references of
+                    //  field states and properties are copied to new actor edit context, thus it is problematic to occupy counter-based
+                    //  properties before and then deoccupy counter-based properties after the copying.
+                    // PROPOSAL (IMPLEMETED):
                     //  Copy field references before any mutation of any edit context on every parameters transition.
 
                     // Cascade EditContext._fieldStates
                     var editContextFieldStatesMemberAccessor = EditContextFieldStatesMemberAccessor;
-                    var fieldStates = editContextFieldStatesMemberAccessor.GetValue(newSuperEditContext);
-                    editContextFieldStatesMemberAccessor.SetValue(newOwnEditContext, fieldStates);
+                    var fieldStates = editContextFieldStatesMemberAccessor.GetValue(newAncestorEditContext);
+                    editContextFieldStatesMemberAccessor.SetValue(newActorEditContext, fieldStates);
 
                     // Cascade EditContext.Properties
-                    EditContextAccessor.GetProperties(newOwnEditContext) = EditContextAccessor.GetProperties(newSuperEditContext);
+                    EditContextAccessor.GetProperties(newActorEditContext) = EditContextAccessor.GetProperties(newAncestorEditContext);
+
+                    // Cascade EditContext.Model
+                    EditContextAccessor.GetModel(newActorEditContext) = EditContextAccessor.GetModel(newAncestorEditContext);
                 }
             }
         }
@@ -72,7 +81,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
                 $"{nameof(EditContext)} does not implement the {EditContextFieldStatesFieldName} field anymore.");
 
     private Dictionary<ModelIdentifier, FieldIdentifier>? _modelRoutes;
-    private ModelIdentifier _superEditContextModelIdentifier;
+    private ModelIdentifier _ancestorEditContextModelIdentifier;
 
     [CascadingParameter]
     private IComponentValidator? RoutesOwningComponentValidator { get; set; }
@@ -81,15 +90,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
     [EditorRequired]
     public Expression<Func<object>>[]? Routes { get; set; }
 
-    EditContext? IEditContextualComponentTrait.OwnEditContext =>
-        ((IComponentValidatorSubpathTrait)this).OwnEditContext ?? throw new InvalidOperationException();
-
-    bool IComponentValidatorSubpathTrait.HasOwnEditContextBeenSetExplicitly { get; set; }
-
-    // The sentinel ensures always having a new created EditContext.
-    object? IComponentValidatorSubpathTrait.Model { get; set; } = s_modelSentinel;
-
-    EditContext? IComponentValidatorSubpathTrait.OwnEditContext { get; set; }
+    EditContext? IEditContextualComponentTrait.ActorEditContext { get; } = new(s_modelSentinel);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -102,14 +103,13 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
             throw new InvalidOperationException($"{GetType().Name} requires a {nameof(Routes)} parameter.");
         }
 
-        await ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSetAsync();
         await base.OnParametersSetAsync();
 
         InitializeModelRoutes();
 
-        Debug.Assert(_superEditContext is not null);
-        if (_superEditContextChangedSinceLastParametersSet) {
-            _superEditContextModelIdentifier = new ModelIdentifier(_superEditContext.Model);
+        Debug.Assert(_ancestorEditContext is not null);
+        if (_ancestorEditContextChangedSinceLastParametersSet) {
+            _ancestorEditContextModelIdentifier = new ModelIdentifier(_ancestorEditContext.Model);
         }
 
         return;
@@ -134,23 +134,33 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         }
     }
 
-    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs e)
+    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
+        // We must NOOP-out the handler, because we already bubble up the model validation request of actor edit context to
+        // ancestor edit context and we do not want 
+        
+        ArgumentNullException.ThrowIfNull(sender);
         Debug.Assert(RoutesOwningComponentValidator is not null);
         var componentValidator = RoutesOwningComponentValidator;
-        componentValidator.ValidateModel();
+        var validationRequestArgs = new ComponentValidatorModelValidationRequestArgs(sender, sender);
+        componentValidator.ValidateModel(this, validationRequestArgs);
     }
 
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(sender);
         Debug.Assert(RoutesOwningComponentValidator is not null);
         var componentValidator = RoutesOwningComponentValidator;
 
         // Scenario 1: Given () => City.Address.Street, then Model is Address and Street is FieldName 
         var directFieldIdentifier = e.FieldIdentifier;
         var directModelIdentifier = new ModelIdentifier(directFieldIdentifier.Model);
-        if (directModelIdentifier.Equals(_superEditContextModelIdentifier)) {
-            componentValidator.ValidateDirectField(directFieldIdentifier);
+        if (directModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
+            var directFieldValidationRequestArgs = new ComponentValidatorDirectFieldValidationRequestArgs(
+                sender,
+                sender,
+                directFieldIdentifier);
+            componentValidator.ValidateDirectField(this, directFieldValidationRequestArgs);
             goto notifyValidationStateChanged;
         }
 
@@ -166,10 +176,15 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         var nestedFieldPath = $"{nestedModelRoute.FieldName}.{directFieldIdentifier.FieldName}";
         // Scenario 1: Build a FieldIdentifier with City as the Model and City.Address.Street as the FieldName
         var nestedFieldIdentifier = new FieldIdentifier(nestedModelRoute.Model, nestedFieldPath);
-        componentValidator.ValidateNestedField(directFieldIdentifier, nestedFieldIdentifier);
+        var nestedFieldValidationRequestArgs = new ComponentValidatorNestedFieldValidationRequestArgs(
+            sender,
+            sender,
+            directFieldIdentifier,
+            nestedFieldIdentifier);
+        componentValidator.ValidateNestedField(this, nestedFieldValidationRequestArgs);
 
         notifyValidationStateChanged:
-        Debug.Assert(_ownEditContext is not null);
-        _ownEditContext.NotifyValidationStateChanged();
+        Debug.Assert(_actorEditContext is not null);
+        _actorEditContext.NotifyValidationStateChanged();
     }
 }

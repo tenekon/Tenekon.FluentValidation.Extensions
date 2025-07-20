@@ -4,5 +4,5 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public interface IEditContextualComponentTrait
 {
-    EditContext? OwnEditContext { get; }
+    EditContext? ActorEditContext { get; }
 }

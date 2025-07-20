@@ -1,9 +1,9 @@
-# Flow logic
+# :microscope: Flow logic
 
 <!-- omit from toc -->
 ## Table of Contents
 
-- [Flow logic](#flow-logic)
+- [:microscope: Flow logic](#microscope-flow-logic)
   - [Component Interaction](#component-interaction)
   - [Event Handling](#event-handling)
 
@@ -21,33 +21,33 @@ flowchart TD
  subgraph s2["ValidationMessageStore Handling"]
         RegisterStores["ValidationMessageStore Handling"]
         RootStore["Register new indepdendent ValidationMessageStore to RootEditContext"]
-        OwnVsSuper{"OwnEditContext ≠ SuperEditContext?"}
-        RegisterOwnStore["Also register new indepdendent ValidationMessageStore to OwnEditContext"]
-        SkipOwnStore["Skip Own ValidationMessageStore"]
+        ActorVsSuper{"ActorEditContext ≠ AncestorEditContext?"}
+        RegisterActorStore["Also register new indepdendent ValidationMessageStore to ActorEditContext"]
+        SkipActorStore["Skip ActorEditContext ValidationMessageStore"]
         n2["Inherits from ComponentValidatorBase?"]
   end
- subgraph s3["Resolve OwnEditContext"]
-        OwnDefined{"OwnEditContext already defined?"}
-        SetOwnAsSuper["Set OwnEditContext = SuperEditContext"]
-        UseOwn["Use explicit or created OwnEditContext"]
-        CascadeOwn["Cascade Own further down the component graph via CascadedValue"]
-        StoreRoot["Write RootEditContext to OwnEditContext Properties[RootEditContextKey]"]
+ subgraph s3["Resolve ActorEditContext"]
+        ActorDefined{"ActorEditContext already defined?"}
+        SetActorAsSuper["Set ActorEditContext = AncestorEditContext"]
+        UseActor["Use explicit or created ActorEditContext"]
+        CascadeActor["Cascade ActorEditContext further down the component graph via CascadedValue"]
+        StoreRoot["Write RootEditContext to ActorEditContext Properties[RootEditContextKey]"]
   end
  subgraph s4["Resolve RootEditContext"]
-        CheckRootKey{"Does SuperEditContext Properties[RootEditContextKey] exist?"}
+        CheckRootKey{"Does AncestorEditContext Properties[RootEditContextKey] exist?"}
         UseExistingRoot["Set RootEditContext = found RootEditContext"]
-        UseSuperAsRoot["Set RootEditContext = SuperEditContext"]
-        StoreRootToSuper["Store RootEditContext to SuperEditContext Properties[RootEditContextKey]"]
+        UseSuperAsRoot["Set RootEditContext = AncestorEditContext"]
+        StoreRootToSuper["Store RootEditContext to AncestorEditContext Properties[RootEditContextKey]"]
   end
  subgraph s1["Sub Event Handling"]
-        SubVR["Subscribe OnValidationRequested (SuperEditContext)"]
-        SubFC["Subscribe OnFieldChanged (Own EditContext)"]
-        BubbleCheck{"OwnEditContext ≠ SuperEditContext?"}
-        BubbleVR["Subscribe OnValidationRequested (OwnEditContext) → bubble up to SuperEditContext"]
+        SubVR["Subscribe OnValidationRequested (AncestorEditContext)"]
+        SubFC["Subscribe OnFieldChanged (ActorEditContext)"]
+        BubbleCheck{"ActorEditContext ≠ AncestorEditContext?"}
+        BubbleVR["Subscribe OnValidationRequested (ActorEditContext) → bubble up to AncestorEditContext"]
   end
  subgraph s6["ComponentValidatorSubpath"]
         Subpath["ComponentValidatorSubpath"]
-        SubCtxCheck{"OwnEditContext / Model?"}
+        SubCtxCheck{"ActorEditContext / Model?"}
         ErrorBoth["❌ ERROR: Both EditContext and Model set"]
         ErrorNone["❌ ERROR: Neither EditContext nor Model set"]
         CreateCtx["Create new EditContext from set Model"]
@@ -58,12 +58,12 @@ flowchart TD
  subgraph s7["ComponentValidatorRoutes"]
         StartRoutes[["Cascaded IComponentValidator from Rootpath or Subpath ancestor"]]
         RoutesComponent["ComponentValidatorRoutes"]
-        RoutesComponentOwn["Always provide OwnEditContext via model sentinel"]
+        RoutesComponentActor["Always provide ActorEditContext via model sentinel"]
   end
  subgraph componentValdatorBase["ComponentValidatorBase"]
         n39["Begin component initialization"]
         componentValidatorClassGraph["componentValidatorClassGraph"]
-        ComponentValidatorBaseEditContextCascadingParameter[["Cascaded EditContext becomes SuperEditContext"]]
+        ComponentValidatorBaseEditContextCascadingParameter[["Cascaded EditContext becomes AncestorEditContext"]]
   end
  subgraph componentValidatorBaseNesting["&nbsp;"]
         n36["Allowed Nesting"]
@@ -75,23 +75,23 @@ flowchart TD
         componentValidatorBaseNesting
   end
     StartRoutes --> RoutesComponent
-    RoutesComponent --> RoutesComponentOwn
+    RoutesComponent --> RoutesComponentActor
     ComponentValidatorBaseEditContextCascadingParameter --> ComponentValidatorBaseClass
     ComponentValidatorBaseClass --> CheckRootKey
     CheckRootKey -- Yes --> UseExistingRoot
-    UseExistingRoot --> OwnDefined
+    UseExistingRoot --> ActorDefined
     CheckRootKey -- No --> UseSuperAsRoot
     UseSuperAsRoot --> StoreRootToSuper
-    StoreRootToSuper --> OwnDefined
-    OwnDefined -- No --> SetOwnAsSuper
-    OwnDefined -- Yes --> UseOwn
-    UseOwn --> CascadeOwn
-    SetOwnAsSuper --> CascadeOwn
-    CascadeOwn --> StoreRoot
-    RegisterStores --> RootStore & OwnVsSuper
-    OwnVsSuper -- Yes --> RegisterOwnStore
-    OwnVsSuper -- No --> SkipOwnStore
-    SkipOwnStore --> SubVR
+    StoreRootToSuper --> ActorDefined
+    ActorDefined -- No --> SetActorAsSuper
+    ActorDefined -- Yes --> UseActor
+    UseActor --> CascadeActor
+    SetActorAsSuper --> CascadeActor
+    CascadeActor --> StoreRoot
+    RegisterStores --> RootStore & ActorVsSuper
+    ActorVsSuper -- Yes --> RegisterActorStore
+    ActorVsSuper -- No --> SkipActorStore
+    SkipActorStore --> SubVR
     SubVR --> SubFC
     SubFC --> BubbleCheck
     BubbleCheck -- Yes --> BubbleVR
@@ -105,7 +105,7 @@ flowchart TD
     UseCtx --> n3
     ErrorNone --> Stop2
     n2 -- Yes --> RegisterStores
-    RegisterOwnStore --> SubVR
+    RegisterActorStore --> SubVR
     StoreRoot --> n2
     n2 -- No --> SubVR
     ErrorBoth --> Stop2
@@ -113,16 +113,16 @@ flowchart TD
     n36 --> n37 & n38
     n3 --> ComponentValidatorBaseClass & n39
     n39 --> ComponentValidatorBaseClass
-    RoutesComponentOwn --> n39
+    RoutesComponentActor --> n39
     n2@{ shape: diam}
     n3@{ shape: rect}
     n39@{ shape: rect}
     n36@{ shape: rect}
     n37@{ shape: rect}
     n38@{ shape: rect}
-    style OwnVsSuper fill:#C8E6C9,stroke:#000,stroke-width:1px,color:#000000
+    style ActorVsSuper fill:#C8E6C9,stroke:#000,stroke-width:1px,color:#000000
     style n2 fill:#C8E6C9,color:#000000
-    style OwnDefined fill:#C8E6C9,color:#000000
+    style ActorDefined fill:#C8E6C9,color:#000000
     style CheckRootKey fill:#C8E6C9,stroke:#000,stroke-width:1px,color:#000000
     style BubbleCheck fill:#C8E6C9,stroke:#000,stroke-width:1px,color:#000000
     style Subpath fill:#E1BEE7,color:#000000
@@ -152,9 +152,9 @@ config:
 ---
 flowchart TD
  subgraph s8["ComponentValidatorRoutes Event Handling"]
-        n16["OnValidationRequested (SuperEditContext)"]
+        n16["OnValidationRequested (AncestorEditContext)"]
         n17@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event delegates ValidateModel() to \nIComponentValidator</span>" }
-        n18["OnFieldChanged (OwnEditContext)"]
+        n18["OnFieldChanged (ActorEditContext)"]
         n19["The
  component associated to that edit context that was triggered by the 
 OnFieldChanged event delegates ValidateDirectField() and 
@@ -162,14 +162,14 @@ ValidateNestedField() to IComponentValidator"]
         n20["EditContext Event Handling"]
   end
  subgraph s9["ComponentValidatorBase Event Handling"]
-        n21["OnValidationRequested (OwnEditContext)"]
-        n22@{ label: "The\n validation request bubbles up to SuperEditContext and if that \nSuperEditContext is OwnEditContext of an ancestor, then the vali<span style=\"padding-left:\">dation request </span>is bubbled up once again until the validation request reached RootEditContext." }
-        n23["Write to Root & Own Stores"]
-        n24["OnFieldChanged (OwnEditContext)"]
+        n21["OnValidationRequested (ActorEditContext)"]
+        n22@{ label: "The\n validation request bubbles up to AncestorEditContext and if that \nAncestorEditContext is ActorEditContext of an ancestor, then the vali<span style=\"padding-left:\">dation request </span>is bubbled up once again until the validation request reached RootEditContext." }
+        n23["Write to Root & Actor Stores"]
+        n24["OnFieldChanged (ActorEditContext)"]
         n25["The
  component associated to that edit context that was triggered by the 
 OnFieldChanged event runs ValidateDirectField() or ValidateNestedField()"]
-        n32["OnValidationRequested (SuperEditContext)"]
+        n32["OnValidationRequested (AncestorEditContext)"]
         n33@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event runs ValidateModel()</span>" }
         n34["EditContext Event Handling"]
   end

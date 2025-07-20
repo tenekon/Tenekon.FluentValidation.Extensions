@@ -4,11 +4,11 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public class ComponentValidatorRootpath : ComponentValidatorBase, IEditContextualComponentTrait
 {
-    EditContext? IEditContextualComponentTrait.OwnEditContext => SuperEditContext;
+    EditContext? IEditContextualComponentTrait.ActorEditContext => AncestorEditContext;
 
     // TODO: Consolidate duplicate code in ComponentValidatorSubpath
     /* TODO: Make pluggable */
-    // protected override void OnSuperEditContextChanged(EditContextChangedEventArgs args)
+    // protected override void OnAncestorEditContextChanged(EditContextChangedEventArgs args)
     // {
     //     RootComponentValidatorContext rootComponentValidatorContext;
     //     if (args.New.Properties.TryGetValue(ComponentValidatorContextLookupKey.Standard, out var validatorContext)) {
@@ -22,14 +22,14 @@ public class ComponentValidatorRootpath : ComponentValidatorBase, IEditContextua
     //     }
     //
     //     rootComponentValidatorContext.AttachValidatorContext(_leafComponentValidatorContext);
-    //     base.OnSuperEditContextChanged(args);
+    //     base.OnAncestorEditContextChanged(args);
     // }
 
 
     /* TODO: Make pluggable */
-    // protected override void DeinitializeSuperEditContext()
+    // protected override void DeinitializeAncestorEditContext()
     // {
-    //     var editContext = _superEditContext;
+    //     var editContext = _ancestorEditContext;
     //     if (editContext is null) {
     //         return;
     //     }
@@ -43,6 +43,6 @@ public class ComponentValidatorRootpath : ComponentValidatorBase, IEditContextua
     //         editContext.Properties.Remove(ComponentValidatorContextLookupKey.Standard);
     //     }
     //
-    //     base.DeinitializeSuperEditContext();
+    //     base.DeinitializeAncestorEditContext();
     // }
 }

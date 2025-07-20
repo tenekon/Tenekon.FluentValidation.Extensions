@@ -111,13 +111,6 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         builder.CloseComponent();
     }
 
-    void IComponentValidator.ValidateModel() => ValidateModel();
-
-    void IComponentValidator.ValidateDirectField(FieldIdentifier fieldIdentifier) => ValidateDirectField(fieldIdentifier);
-
-    void IComponentValidator.ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier) =>
-        ValidateNestedField(directFieldIdentifier, nestedFieldIdentifier);
-
     private void ApplyValidationStrategy(ValidationStrategy<object> validationStrategy) =>
         ConfigureValidationStrategy?.Invoke(validationStrategy);
 
@@ -232,7 +225,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     {
         Debug.Assert(_rootEditContextValidationMessageStore is not null);
         _rootEditContextValidationMessageStore.Clear();
-        _ownEditContextValidationMessageStore?.Clear();
+        _actorEditContextValidationMessageStore?.Clear();
     }
 
     private void AddValidationMessageToStores(FieldIdentifier fieldIdentifier, string errorMessage)
@@ -240,17 +233,17 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         Debug.Assert(_rootEditContextValidationMessageStore is not null);
         _rootEditContextValidationMessageStore.Add(fieldIdentifier, errorMessage);
 
-        // REMINDER: own edit context validation store can be null,
-        // if own edit context == super edit context == root edit context 
-        _ownEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
+        // REMINDER: actor edit context validation store can be null,
+        // if actor edit context == ancestor edit context == root edit context 
+        _actorEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
     }
 
     private void ValidateModel()
     {
         Debug.Assert(_validator is not null);
-        Debug.Assert(_ownEditContext is not null);
+        Debug.Assert(_actorEditContext is not null);
 
-        var validationContext = ValidationContext<object>.CreateWithOptions(_ownEditContext.Model, _applyValidationStrategyAction);
+        var validationContext = ValidationContext<object>.CreateWithOptions(_actorEditContext.Model, _applyValidationStrategyAction);
         ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
         var validationResult = _validator.Validate(validationContext);
 
@@ -260,14 +253,38 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
                 continue;
             }
 
-            var fieldIdentifier = FieldIdentifierHelper.DeriveFieldIdentifier(_ownEditContext.Model, error.PropertyName);
+            var fieldIdentifier = FieldIdentifierHelper.DeriveFieldIdentifier(_actorEditContext.Model, error.PropertyName);
             AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
         }
 
-        _ownEditContext.NotifyValidationStateChanged();
+        _actorEditContext.NotifyValidationStateChanged();
     }
 
-    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs e) => ValidateModel();
+    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
+
+    protected virtual void OnValidateModel(object? sender, ComponentValidatorModelValidationRequestArgs args)
+    {
+        // A. Whenever actor edit context of a direct descendant of ComponentValidatorRoutes fires OnValidationRequested,
+        //    it may bubble up to this actor edit context which bubbles up to this ancestor edit context leading to invocation of
+        //    OnValidateModel(object? sender, ValidationRequestedEventArgs args) and implictly ValidateModel().
+        // B. Whenever actor edit context of a direct descendant of ComponentValidatorRoutes fires OnValidationRequested,
+        //    it may bubble up to this actor edit context. If this actor edit context is reference equal to the
+        //    ancestor edit context of a direct descendant of ComponentValidatorRoutes, then the OnValidationRequested
+        //    invocation of the ancestor edit context of that direct descendant of ComponentValidatorRoutes
+        //    will lead to OnValidateModel(object? sender, ValidationRequestedEventArgs args) of
+        //    that direct descendant of ComponentValidatorRoutes which bubbles up to
+        //    OnValidateModel(object? sender, ComponentValidatorModelValidationRequestArgs args) and implictly ValidateModel().
+        // If the original source of the event, possibly the ancestor edit context a direct descendant of ComponentValidatorRoutes,
+        // is reference equals to this actor edit context, then we ignore this invocation to prevent having called ValidateModel() twice.
+        if (ReferenceEquals(_actorEditContext, args.OriginalSource)) {
+            return;
+        }
+
+        ValidateModel();
+    }
+
+    void IComponentValidator.ValidateModel(object? sender, ComponentValidatorModelValidationRequestArgs args) =>
+        OnValidateModel(sender, args);
 
     // TODO: Removable?
     private ValidationResult Validate(ValidationContext<object> validationContext)
@@ -284,7 +301,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     private void ValidateDirectField(FieldIdentifier fieldIdentifier)
     {
-        Debug.Assert(_ownEditContext is not null);
+        Debug.Assert(_actorEditContext is not null);
         Debug.Assert(_validator is not null);
 
         if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(fieldIdentifier.Model.GetType())) {
@@ -307,7 +324,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
         }
 
-        _ownEditContext.NotifyValidationStateChanged();
+        _actorEditContext.NotifyValidationStateChanged();
         return;
 
         void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
@@ -317,10 +334,13 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         }
     }
 
+    void IComponentValidator.ValidateDirectField(object? sender, ComponentValidatorDirectFieldValidationRequestArgs args) =>
+        ValidateDirectField(args.FieldIdentifier);
+
     private void ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier)
     {
         Debug.Assert(_validator is not null);
-        Debug.Assert(_ownEditContext is not null);
+        Debug.Assert(_actorEditContext is not null);
 
         if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(nestedFieldIdentifier.Model.GetType())) {
             Logger?.LogWarning(
@@ -341,7 +361,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             AddValidationMessageToStores(directFieldIdentifier, error.ErrorMessage);
         }
 
-        _ownEditContext.NotifyValidationStateChanged();
+        _actorEditContext.NotifyValidationStateChanged();
         return;
 
         void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
@@ -350,6 +370,9 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             _applyValidationStrategyAction.Invoke(validationStrategy);
         }
     }
+
+    void IComponentValidator.ValidateNestedField(object? sender, ComponentValidatorNestedFieldValidationRequestArgs args) =>
+        ValidateNestedField(args.DirectFieldIdentifier, args.NestedFieldIdentifier);
 
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
 
