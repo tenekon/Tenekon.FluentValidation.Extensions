@@ -316,17 +316,15 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     private void DeinitalizeServiceScopeSource()
     {
-        // ReSharper disable once InlineTemporaryVariable
-        ref var serviceScopeSource = ref _serviceScopeSource;
-        serviceScopeSource.Dispose();
+        if (ServiceScopeSource.TryAcquireSyncDisposal(ref _serviceScopeSource)) {
+            _serviceScopeSource.Dispose();
+        }
     }
 
     private async Task DeinitalizeServiceScopeSourceAsync()
     {
-        // ReSharper disable once InlineTemporaryVariable
-        ref var serviceScopeSource = ref _serviceScopeSource;
-        if (serviceScopeSource.TryAcquireAsyncDisposal()) {
-            await serviceScopeSource.DisposeAsync();
+        if (ServiceScopeSource.TryAcquireAsyncDisposal(ref _serviceScopeSource)) {
+            await _serviceScopeSource.DisposeAsync();
         }
     }
 
@@ -375,23 +373,22 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             target = source;
         }
 
-        public void Dispose()
+        public static bool TryAcquireSyncDisposal(ref ServiceScopeSource source) =>
+            (Interlocked.Or(ref source._state, (int)States.SyncDisposed) & (int)(States.SyncDisposed | States.Initialized)) ==
+            (int)States.Initialized;
+
+        public static bool TryAcquireAsyncDisposal(ref ServiceScopeSource source) =>
+            (Interlocked.Or(ref source._state, (int)States.AsyncDisposed) & (int)(States.AsyncDisposed | States.Initialized)) ==
+            (int)States.Initialized;
+
+        public readonly void Dispose()
         {
             if (!_asyncServiceScope.HasValue) {
                 return;
             }
 
-            if ((Interlocked.Or(ref _state, (int)States.SyncDisposed) & (int)(States.SyncDisposed | States.Initialized)) !=
-                (int)States.Initialized) {
-                return;
-            }
-
             Value.Dispose();
         }
-
-        public bool TryAcquireAsyncDisposal() =>
-            (Interlocked.Or(ref _state, (int)States.AsyncDisposed) & (int)(States.AsyncDisposed | States.Initialized)) ==
-            (int)States.Initialized;
 
         public readonly ValueTask DisposeAsync()
         {
