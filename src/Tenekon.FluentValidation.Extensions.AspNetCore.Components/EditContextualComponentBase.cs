@@ -6,20 +6,6 @@ using RuntimeHelpers = System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-// Currently we have chosen the following event model:
-// A. OnValidateRequest bubbles up from actor edit contex to ancestor edit context.
-// B. We only act on OnValidateRequest from the ancestor edit context.
-// In simple words: Starting from that component validator that is firing OnValidateRequest,
-// that component, and recursively its siblings AND their ancestors and their siblings that are associated to the same root edit context
-// would have their models validated.
-//
-// SCENARIO:
-//   parent A and two children, B and C, and child B has a child D and
-// ISSUE:
-//   If B triggers OnValidateRequest on actor edit context, then D won't get notified to validate its model.
-// PROPOSAL:
-//   We should bubble up OnValidateRequest actor edit context to root edit context and act on its OnValidateRequest.
-//   The consequence would be that any validator component descendants assocated to the same root edit would have its model validated.
 public abstract class EditContextualComponentBase<T> : ComponentBase, IEditContextualComponentTrait, IDisposable, IAsyncDisposable
     where T : IHandlingParametersTransition
 {
