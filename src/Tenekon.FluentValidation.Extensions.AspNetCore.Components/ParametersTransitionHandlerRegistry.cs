@@ -21,5 +21,14 @@ internal class ParametersTransitionHandlerRegistry
 
     internal IEnumerable<RegistrationItem> GetRegistrationItems() => _handlerList;
 
+    public void RemoveHandler(Action<ParametersTransition> handler)
+    {
+        var index = _handlerList.FindLastIndex(x => ReferenceEquals(x.Handler, handler));
+        if (index == -1) {
+            throw new InvalidOperationException("The specified handler was not found in the handler list.");
+        }
+        _handlerList.RemoveAt(index);
+    }
+
     internal record RegistrationItem(Action<ParametersTransition> Handler);
 }

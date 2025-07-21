@@ -149,6 +149,202 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         }
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        await ConfigureOnParametersSetAsync();
+        await base.OnParametersSetAsync();
+    }
+
+    bool IComponentValidator.IsInScope(EditContext editContext) =>
+        ReferenceEquals(editContext, _rootEditContext) ||
+        (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(editContext, out var rootEditContext) &&
+            ReferenceEquals(rootEditContext, _rootEditContext));
+
+    private void ClearValidationMessageStores()
+    {
+        Debug.Assert(_rootEditContextValidationMessageStore is not null);
+        _rootEditContextValidationMessageStore.Clear();
+        _actorEditContextValidationMessageStore?.Clear();
+    }
+
+    private void AddValidationMessageToStores(FieldIdentifier fieldIdentifier, string errorMessage)
+    {
+        Debug.Assert(_rootEditContextValidationMessageStore is not null);
+        _rootEditContextValidationMessageStore.Add(fieldIdentifier, errorMessage);
+
+        // REMINDER: actor edit context validation store can be null,
+        // if actor edit context == ancestor edit context == root edit context 
+        _actorEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
+    }
+
+    private void ValidateModel()
+    {
+        Debug.Assert(_validator is not null);
+        Debug.Assert(_actorEditContext is not null);
+
+        var validationContext = ValidationContext<object>.CreateWithOptions(_actorEditContext.Model, _applyValidationStrategyAction);
+        ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
+        var validationResult = _validator.Validate(validationContext);
+
+        ClearValidationMessageStores();
+        foreach (var error in validationResult.Errors) {
+            if (error.Severity > MinimumSeverity) {
+                continue;
+            }
+
+            var fieldIdentifier = FieldIdentifierHelper.DeriveFieldIdentifier(_actorEditContext.Model, error.PropertyName);
+            AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
+        }
+
+        _actorEditContext.NotifyValidationStateChanged();
+    }
+
+    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
+
+    protected virtual void NotifyModelValidationRequested(ComponentValidatorModelValidationRequestedArgs args)
+    {
+        // A. Whenever an actor edit context of a direct descendant of ComponentValidatorRoutes fires OnValidationRequested,
+        //    it bubbles up to the root edit context, triggering OnValidateModel(object? sender, ValidationRequestedEventArgs args)
+        //    and implicitly ValidateModel() of any component validator associated with the root edit context,
+        //    except ComponentValidatorRoutes. This is because they do not subscribe to OnValidationRequested of the root edit context
+        //    to avoid a second invocation of ValidateModel().
+        // An additional safety net: To prevent a potential second invocation of ValidateModel(), we return early if the original source of
+        // the event is reference-equal to the root edit context, since that instance already handles OnValidationRequested for
+        // the root edit context.
+        if (ReferenceEquals(_rootEditContext, args.OriginalSource)) {
+            return;
+        }
+
+        ValidateModel();
+    }
+
+    void IComponentValidator.NotifyModelValidationRequested(ComponentValidatorModelValidationRequestedArgs args) =>
+        NotifyModelValidationRequested(args);
+
+    // TODO: Removable?
+    private ValidationResult Validate(ValidationContext<object> validationContext)
+    {
+        Debug.Assert(_validator is not null);
+        try {
+            return _validator.Validate(validationContext);
+        } catch (InvalidOperationException error) {
+            throw new ComponentValidationException(
+                $"{error.Message} Consider to make use of {nameof(ComponentValidatorSubpath)}, {nameof(ComponentValidatorRoutes)} or similiar.",
+                error);
+        }
+    }
+
+    private void ValidateDirectField(FieldIdentifier fieldIdentifier)
+    {
+        Debug.Assert(_actorEditContext is not null);
+        Debug.Assert(_validator is not null);
+
+        if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(fieldIdentifier.Model.GetType())) {
+            Logger?.LogWarning(
+                "Direct field identifier validation was supressed, because its model is invalidatable: {}",
+                fieldIdentifier.Model.GetType());
+            return;
+        }
+
+        var validationContext = ValidationContext<object>.CreateWithOptions(fieldIdentifier.Model, ApplyValidationStrategy2);
+        ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
+        var validationResult = _validator.Validate(validationContext);
+
+        ClearValidationMessageStores();
+        foreach (var error in validationResult.Errors) {
+            if (error.Severity > MinimumSeverity) {
+                continue;
+            }
+
+            AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
+        }
+
+        _actorEditContext.NotifyValidationStateChanged();
+        return;
+
+        void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
+        {
+            validationStrategy.IncludeProperties(fieldIdentifier.FieldName);
+            _applyValidationStrategyAction.Invoke(validationStrategy);
+        }
+    }
+
+    void IComponentValidator.NotifyDirectFieldValidationRequested(ComponentValidatorDirectFieldValidationRequestedArgs args) =>
+        ValidateDirectField(args.FieldIdentifier);
+
+    private void ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier)
+    {
+        Debug.Assert(_validator is not null);
+        Debug.Assert(_actorEditContext is not null);
+
+        if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(nestedFieldIdentifier.Model.GetType())) {
+            Logger?.LogWarning(
+                "Nested field identifier validation was supressed, because its model is invalidatable: {}",
+                nestedFieldIdentifier.Model.GetType());
+            return;
+        }
+
+        var validationContext = ValidationContext<object>.CreateWithOptions(nestedFieldIdentifier.Model, ApplyValidationStrategy2);
+        ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
+        var validationResult = _validator.Validate(validationContext);
+
+        ClearValidationMessageStores();
+        foreach (var error in validationResult.Errors) {
+            if (error.Severity > MinimumSeverity) {
+                continue;
+            }
+            AddValidationMessageToStores(directFieldIdentifier, error.ErrorMessage);
+        }
+
+        _actorEditContext.NotifyValidationStateChanged();
+        return;
+
+        void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
+        {
+            validationStrategy.IncludeProperties(nestedFieldIdentifier.FieldName);
+            _applyValidationStrategyAction.Invoke(validationStrategy);
+        }
+    }
+
+    protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
+
+    void IComponentValidator.NotifyNestedFieldValidationRequested(ComponentValidatorNestedFieldValidationRequestedArgs args) =>
+        ValidateNestedField(args.DirectFieldIdentifier, args.NestedFieldIdentifier);
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder) =>
+        RenderComponentValidator(builder, _renderComponentValidatorContent);
+
+    private void DeinitalizeServiceScopeSource()
+    {
+        // ReSharper disable once InlineTemporaryVariable
+        ref var serviceScopeSource = ref _serviceScopeSource;
+        serviceScopeSource.Dispose();
+    }
+
+    private async Task DeinitalizeServiceScopeSourceAsync()
+    {
+        // ReSharper disable once InlineTemporaryVariable
+        ref var serviceScopeSource = ref _serviceScopeSource;
+        if (serviceScopeSource.TryAcquireAsyncDisposal()) {
+            await serviceScopeSource.DisposeAsync();
+        }
+    }
+
+    public override async ValueTask DisposeAsyncCore()
+    {
+        await DeinitalizeServiceScopeSourceAsync();
+        await base.DisposeAsyncCore();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) {
+            DeinitalizeServiceScopeSource();
+        }
+
+        base.Dispose(disposing);
+    }
+
     private struct ServiceScopeSource(IServiceProvider? serviceProvider) : IDisposable, IAsyncDisposable
     {
         internal static ServiceScopeSource None { get; } = default;
@@ -213,200 +409,5 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             SyncDisposed = 1 << 1,
             AsyncDisposed = 1 << 2,
         }
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        await ConfigureOnParametersSetAsync();
-        await base.OnParametersSetAsync();
-    }
-
-    private void ClearValidationMessageStores()
-    {
-        Debug.Assert(_rootEditContextValidationMessageStore is not null);
-        _rootEditContextValidationMessageStore.Clear();
-        _actorEditContextValidationMessageStore?.Clear();
-    }
-
-    private void AddValidationMessageToStores(FieldIdentifier fieldIdentifier, string errorMessage)
-    {
-        Debug.Assert(_rootEditContextValidationMessageStore is not null);
-        _rootEditContextValidationMessageStore.Add(fieldIdentifier, errorMessage);
-
-        // REMINDER: actor edit context validation store can be null,
-        // if actor edit context == ancestor edit context == root edit context 
-        _actorEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
-    }
-
-    private void ValidateModel()
-    {
-        Debug.Assert(_validator is not null);
-        Debug.Assert(_actorEditContext is not null);
-
-        var validationContext = ValidationContext<object>.CreateWithOptions(_actorEditContext.Model, _applyValidationStrategyAction);
-        ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
-        var validationResult = _validator.Validate(validationContext);
-
-        ClearValidationMessageStores();
-        foreach (var error in validationResult.Errors) {
-            if (error.Severity > MinimumSeverity) {
-                continue;
-            }
-
-            var fieldIdentifier = FieldIdentifierHelper.DeriveFieldIdentifier(_actorEditContext.Model, error.PropertyName);
-            AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
-        }
-
-        _actorEditContext.NotifyValidationStateChanged();
-    }
-
-    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
-
-    protected virtual void OnValidateModel(object? sender, ComponentValidatorModelValidationRequestArgs args)
-    {
-        // A. Whenever actor edit context of a direct descendant of ComponentValidatorRoutes fires OnValidationRequested,
-        //    it may bubble up to this actor edit context which bubbles up to this ancestor edit context leading to invocation of
-        //    OnValidateModel(object? sender, ValidationRequestedEventArgs args) and implictly ValidateModel().
-        // B. Whenever actor edit context of a direct descendant of ComponentValidatorRoutes fires OnValidationRequested,
-        //    it may bubble up to this actor edit context. If this actor edit context is reference equal to the
-        //    ancestor edit context of a direct descendant of ComponentValidatorRoutes, then the OnValidationRequested
-        //    invocation of the ancestor edit context of that direct descendant of ComponentValidatorRoutes
-        //    will lead to OnValidateModel(object? sender, ValidationRequestedEventArgs args) of
-        //    that direct descendant of ComponentValidatorRoutes which bubbles up to
-        //    OnValidateModel(object? sender, ComponentValidatorModelValidationRequestArgs args) and implictly ValidateModel().
-        // If the original source of the event, possibly the ancestor edit context a direct descendant of ComponentValidatorRoutes,
-        // is reference equals to this actor edit context, then we ignore this invocation to prevent having called ValidateModel() twice.
-        if (ReferenceEquals(_actorEditContext, args.OriginalSource)) {
-            return;
-        }
-
-        ValidateModel();
-    }
-
-    void IComponentValidator.ValidateModel(object? sender, ComponentValidatorModelValidationRequestArgs args) =>
-        OnValidateModel(sender, args);
-
-    // TODO: Removable?
-    private ValidationResult Validate(ValidationContext<object> validationContext)
-    {
-        Debug.Assert(_validator is not null);
-        try {
-            return _validator.Validate(validationContext);
-        } catch (InvalidOperationException error) {
-            throw new ComponentValidationException(
-                $"{error.Message} Consider to make use of {nameof(ComponentValidatorSubpath)}, {nameof(ComponentValidatorRoutes)} or similiar.",
-                error);
-        }
-    }
-
-    private void ValidateDirectField(FieldIdentifier fieldIdentifier)
-    {
-        Debug.Assert(_actorEditContext is not null);
-        Debug.Assert(_validator is not null);
-
-        if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(fieldIdentifier.Model.GetType())) {
-            Logger?.LogWarning(
-                "Direct field identifier validation was supressed, because its model is invalidatable: {}",
-                fieldIdentifier.Model.GetType());
-            return;
-        }
-
-        var validationContext = ValidationContext<object>.CreateWithOptions(fieldIdentifier.Model, ApplyValidationStrategy2);
-        ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
-        var validationResult = _validator.Validate(validationContext);
-
-        ClearValidationMessageStores();
-        foreach (var error in validationResult.Errors) {
-            if (error.Severity > MinimumSeverity) {
-                continue;
-            }
-
-            AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
-        }
-
-        _actorEditContext.NotifyValidationStateChanged();
-        return;
-
-        void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
-        {
-            validationStrategy.IncludeProperties(fieldIdentifier.FieldName);
-            _applyValidationStrategyAction.Invoke(validationStrategy);
-        }
-    }
-
-    void IComponentValidator.ValidateDirectField(object? sender, ComponentValidatorDirectFieldValidationRequestArgs args) =>
-        ValidateDirectField(args.FieldIdentifier);
-
-    private void ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier)
-    {
-        Debug.Assert(_validator is not null);
-        Debug.Assert(_actorEditContext is not null);
-
-        if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(nestedFieldIdentifier.Model.GetType())) {
-            Logger?.LogWarning(
-                "Nested field identifier validation was supressed, because its model is invalidatable: {}",
-                nestedFieldIdentifier.Model.GetType());
-            return;
-        }
-
-        var validationContext = ValidationContext<object>.CreateWithOptions(nestedFieldIdentifier.Model, ApplyValidationStrategy2);
-        ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
-        var validationResult = _validator.Validate(validationContext);
-
-        ClearValidationMessageStores();
-        foreach (var error in validationResult.Errors) {
-            if (error.Severity > MinimumSeverity) {
-                continue;
-            }
-            AddValidationMessageToStores(directFieldIdentifier, error.ErrorMessage);
-        }
-
-        _actorEditContext.NotifyValidationStateChanged();
-        return;
-
-        void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
-        {
-            validationStrategy.IncludeProperties(nestedFieldIdentifier.FieldName);
-            _applyValidationStrategyAction.Invoke(validationStrategy);
-        }
-    }
-
-    void IComponentValidator.ValidateNestedField(object? sender, ComponentValidatorNestedFieldValidationRequestArgs args) =>
-        ValidateNestedField(args.DirectFieldIdentifier, args.NestedFieldIdentifier);
-
-    protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
-
-    protected override void BuildRenderTree(RenderTreeBuilder builder) =>
-        RenderComponentValidator(builder, _renderComponentValidatorContent);
-
-    private void DeinitalizeServiceScopeSource()
-    {
-        // ReSharper disable once InlineTemporaryVariable
-        ref var serviceScopeSource = ref _serviceScopeSource;
-        serviceScopeSource.Dispose();
-    }
-
-    private async Task DeinitalizeServiceScopeSourceAsync()
-    {
-        // ReSharper disable once InlineTemporaryVariable
-        ref var serviceScopeSource = ref _serviceScopeSource;
-        if (serviceScopeSource.TryAcquireAsyncDisposal()) {
-            await serviceScopeSource.DisposeAsync();
-        }
-    }
-
-    public override async ValueTask DisposeAsyncCore()
-    {
-        await DeinitalizeServiceScopeSourceAsync();
-        await base.DisposeAsyncCore();
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing) {
-            DeinitalizeServiceScopeSource();
-        }
-
-        base.Dispose(disposing);
     }
 }

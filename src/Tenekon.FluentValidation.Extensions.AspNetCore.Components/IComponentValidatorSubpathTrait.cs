@@ -45,6 +45,7 @@ public interface IComponentValidatorSubpathTrait
             throw ExceptionFactory(new ErrorContext(this, ErrorIdentifier.ActorEditContextAndModel));
         }
 
+        // TODO: Support ActorEditContext = new EditContext(AncestorEditContext.Model)
         if (!HasActorEditContextBeenSetExplicitly && Model is null) {
             // We have no ActorEditContext and no Model
             throw ExceptionFactory(new ErrorContext(this, ErrorIdentifier.NoActorEditContextAndNoModel));
@@ -55,7 +56,7 @@ public interface IComponentValidatorSubpathTrait
         if (Model is not null && !ReferenceEquals(Model, ActorEditContext?.Model)) {
             ActorEditContext = new EditContext(Model!);
         }
-        
+
         return Task.CompletedTask;
     }
 

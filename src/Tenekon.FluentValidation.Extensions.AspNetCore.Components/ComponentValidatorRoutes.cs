@@ -29,6 +29,9 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
     static ComponentValidatorRoutes()
     {
+        HandlingParametersTransitionAccessor<ComponentValidatorRoutes>.ParametersTransitionHandlerRegistry.RemoveHandler(
+            SubscribeToRootEditContextOnValidationRequestedAction);
+
         HandlingParametersTransitionAccessor<ComponentValidatorRoutes>.ParametersTransitionHandlerRegistry.RegisterHandler(
             CopyAncestorEditContextFieldReferencesToActorEditContext,
             // If we want to make the registry API public, we should consider to make adding position relative to already added handlers,
@@ -39,13 +42,13 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
         static void CopyAncestorEditContextFieldReferencesToActorEditContext(ParametersTransition transition)
         {
+            var ancestor = transition.AncestorContextTransition;
+            var actor = transition.ActorContextTransition;
+
             // We assume that actor edit context never changes only once at first transition.
 
-            if (transition.AncestorContextTransition.IsOldReferenceDifferentToNew || transition.ActorContextTransition.IsFirstTransition) {
-                if (transition.AncestorContextTransition.IsNewNonNull && transition.ActorContextTransition.IsNewNonNull) {
-                    var newAncestorEditContext = transition.AncestorContextTransition.New;
-                    var newActorEditContext = transition.ActorContextTransition.New;
-
+            if (ancestor.IsOldReferenceDifferentToNew || actor.IsFirstTransition) {
+                if (ancestor.IsNewNonNull && actor.IsNewNonNull) {
                     // ISSUE:
                     //  The problem is, that root edit context may become the ancestor edit context, then the ancestor edit references of
                     //  field states and properties are copied to new actor edit context, thus it is problematic to occupy counter-based
@@ -55,14 +58,16 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
                     // Cascade EditContext._fieldStates
                     var editContextFieldStatesMemberAccessor = EditContextFieldStatesMemberAccessor;
-                    var fieldStates = editContextFieldStatesMemberAccessor.GetValue(newAncestorEditContext);
-                    editContextFieldStatesMemberAccessor.SetValue(newActorEditContext, fieldStates);
+                    var fieldStates = editContextFieldStatesMemberAccessor.GetValue(ancestor.New);
+                    editContextFieldStatesMemberAccessor.SetValue(actor.New, fieldStates);
 
                     // Cascade EditContext.Properties
-                    EditContextAccessor.GetProperties(newActorEditContext) = EditContextAccessor.GetProperties(newAncestorEditContext);
+                    EditContextAccessor.GetProperties(actor.New) = EditContextAccessor.GetProperties(ancestor.New);
 
                     // Cascade EditContext.Model
-                    EditContextAccessor.GetModel(newActorEditContext) = EditContextAccessor.GetModel(newAncestorEditContext);
+                    EditContextAccessor.GetModel(actor.New) = EditContextAccessor.GetModel(ancestor.New);
+
+                    actor.InvalidateCache();
                 }
             }
         }
@@ -104,6 +109,12 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         }
 
         await base.OnParametersSetAsync();
+        Debug.Assert(_rootEditContext is not null);
+
+        if (!RoutesOwningComponentValidator.IsInScope(_rootEditContext)) {
+            throw new InvalidOperationException(
+                $"{GetType().Name} has a cascading parameter of type {typeof(IComponentValidator)}, but the cascaded component validator operates in a different scope than this component.");
+        }
 
         InitializeModelRoutes();
 
@@ -136,14 +147,11 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
     protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
-        // We must NOOP-out the handler, because we already bubble up the model validation request of actor edit context to
-        // ancestor edit context and we do not want 
-        
         ArgumentNullException.ThrowIfNull(sender);
         Debug.Assert(RoutesOwningComponentValidator is not null);
         var componentValidator = RoutesOwningComponentValidator;
-        var validationRequestArgs = new ComponentValidatorModelValidationRequestArgs(sender, sender);
-        componentValidator.ValidateModel(this, validationRequestArgs);
+        var validationRequestedArgs = new ComponentValidatorModelValidationRequestedArgs(sender, sender);
+        componentValidator.NotifyModelValidationRequested(validationRequestedArgs);
     }
 
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e)
@@ -156,11 +164,11 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         var directFieldIdentifier = e.FieldIdentifier;
         var directModelIdentifier = new ModelIdentifier(directFieldIdentifier.Model);
         if (directModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
-            var directFieldValidationRequestArgs = new ComponentValidatorDirectFieldValidationRequestArgs(
-                sender,
+            var directFieldValidationRequestArgs = new ComponentValidatorDirectFieldValidationRequestedArgs(
+                this,
                 sender,
                 directFieldIdentifier);
-            componentValidator.ValidateDirectField(this, directFieldValidationRequestArgs);
+            componentValidator.NotifyDirectFieldValidationRequested(directFieldValidationRequestArgs);
             goto notifyValidationStateChanged;
         }
 
@@ -176,12 +184,12 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         var nestedFieldPath = $"{nestedModelRoute.FieldName}.{directFieldIdentifier.FieldName}";
         // Scenario 1: Build a FieldIdentifier with City as the Model and City.Address.Street as the FieldName
         var nestedFieldIdentifier = new FieldIdentifier(nestedModelRoute.Model, nestedFieldPath);
-        var nestedFieldValidationRequestArgs = new ComponentValidatorNestedFieldValidationRequestArgs(
-            sender,
+        var nestedFieldValidationRequestedArgs = new ComponentValidatorNestedFieldValidationRequestedArgs(
+            this,
             sender,
             directFieldIdentifier,
             nestedFieldIdentifier);
-        componentValidator.ValidateNestedField(this, nestedFieldValidationRequestArgs);
+        componentValidator.NotifyNestedFieldValidationRequested(nestedFieldValidationRequestedArgs);
 
         notifyValidationStateChanged:
         Debug.Assert(_actorEditContext is not null);

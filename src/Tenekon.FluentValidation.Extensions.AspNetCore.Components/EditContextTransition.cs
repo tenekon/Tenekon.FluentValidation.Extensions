@@ -15,7 +15,13 @@ internal sealed class EditContextTransition
     /// <remarks>
     /// Null if there was no prior context.
     /// </remarks>
-    public EditContext? Old { get; set; }
+    public EditContext? Old {
+        get;
+        set {
+            InvalidateCache();
+            field = value;
+        }
+    }
 
     [MemberNotNullWhen(true, nameof(Old))]
     public bool IsOldNonNull => Old is not null;
@@ -29,7 +35,10 @@ internal sealed class EditContextTransition
     [AllowNull]
     public EditContext New {
         get => _new ?? throw new InvalidOperationException("Member is null although it is a required member.");
-        set => _new = value;
+        set {
+            InvalidateCache();
+            _new = value;
+        }
     }
 
     public bool IsNewNonNull => _new is not null;
@@ -39,7 +48,15 @@ internal sealed class EditContextTransition
     /// </summary>
     public required bool IsFirstTransition { get; init; }
 
-    public bool IsOldReferenceEqualsToNew => _isOldReferenceEqualsToNew ??= ReferenceEquals(Old, _new);
+    public bool IsOldReferenceEqualsToNew =>
+        _isOldReferenceEqualsToNew ??= ReferenceEquals(Old, _new) && ReferenceEquals(Old?.Model, _new?.Model);
 
-    public bool IsOldReferenceDifferentToNew => _isOldReferenceDifferentToNew ??= !ReferenceEquals(Old, _new);
+    public bool IsOldReferenceDifferentToNew =>
+        _isOldReferenceDifferentToNew ??= !ReferenceEquals(Old, _new) || !ReferenceEquals(Old?.Model, _new?.Model);
+
+    public void InvalidateCache()
+    {
+        _isOldReferenceEqualsToNew = null;
+        _isOldReferenceDifferentToNew = null;
+    }
 }

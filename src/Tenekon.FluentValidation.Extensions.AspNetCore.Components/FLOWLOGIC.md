@@ -40,10 +40,10 @@ flowchart TD
         StoreRootToSuper["Store RootEditContext to AncestorEditContext Properties[RootEditContextKey]"]
   end
  subgraph s1["Sub Event Handling"]
-        SubVR["Subscribe OnValidationRequested (AncestorEditContext)"]
+        SubVR["Subscribe OnValidationRequested (RootEditContext)"]
         SubFC["Subscribe OnFieldChanged (ActorEditContext)"]
         BubbleCheck{"ActorEditContext ≠ AncestorEditContext?"}
-        BubbleVR["Subscribe OnValidationRequested (ActorEditContext) → bubble up to AncestorEditContext"]
+        BubbleVR["Subscribe OnValidationRequested (ActorEditContext) → bubble up to RootEditContext"]
   end
  subgraph s6["ComponentValidatorSubpath"]
         Subpath["ComponentValidatorSubpath"]
@@ -152,24 +152,24 @@ config:
 ---
 flowchart TD
  subgraph s8["ComponentValidatorRoutes Event Handling"]
-        n16["OnValidationRequested (AncestorEditContext)"]
-        n17@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event delegates ValidateModel() to \nIComponentValidator</span>" }
+        n16["OnValidationRequested (RootEditContext)"]
+        n17@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event won't delegate model validation request to \nIComponentValidator; the model validation request become a no-op.</span>" }
         n18["OnFieldChanged (ActorEditContext)"]
         n19["The
  component associated to that edit context that was triggered by the 
-OnFieldChanged event delegates ValidateDirectField() and 
-ValidateNestedField() to IComponentValidator"]
+OnFieldChanged event delegates a direct or a nested field validation request to IComponentValidator."]
         n20["EditContext Event Handling"]
   end
  subgraph s9["ComponentValidatorBase Event Handling"]
         n21["OnValidationRequested (ActorEditContext)"]
-        n22@{ label: "The\n validation request bubbles up to AncestorEditContext and if that \nAncestorEditContext is ActorEditContext of an ancestor, then the vali<span style=\"padding-left:\">dation request </span>is bubbled up once again until the validation request reached RootEditContext." }
+        n22["The
+ validation request bubbles up to RootEditContext."]
         n23["Write to Root & Actor Stores"]
         n24["OnFieldChanged (ActorEditContext)"]
         n25["The
  component associated to that edit context that was triggered by the 
-OnFieldChanged event runs ValidateDirectField() or ValidateNestedField()"]
-        n32["OnValidationRequested (AncestorEditContext)"]
+OnFieldChanged event runs ValidateDirectField(..) or ValidateNestedField(..,..)"]
+        n32["OnValidationRequested (RootEditContext)"]
         n33@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event runs ValidateModel()</span>" }
         n34["EditContext Event Handling"]
   end

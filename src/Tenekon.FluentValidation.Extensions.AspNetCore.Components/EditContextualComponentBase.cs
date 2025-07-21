@@ -25,10 +25,12 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 {
     static EditContextualComponentBase()
     {
-        var transitioner1 = UpdateEditContextReferences;
+        T.ParametersTransitionHandlerRegistry.RegisterHandler(
+            SubscribeToRootEditContextOnValidationRequestedAction,
+            HandlerAddingPosition.End);
 
         T.ParametersTransitionHandlerRegistry.RegisterHandler(
-            transitioner1,
+            UpdateEditContextReferences,
             HandlerAddingPosition.End
             // TOOD: maybe unique object with debug token?
         ); // $"{nameof(EditContextualComponentBase<>)}<{typeof(T)}>.{nameof(HandleParametersTransition)}"
@@ -49,6 +51,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
                 component.DeinitializeRootEditContext();
 
                 if (root.IsNewNonNull) {
+                    root.New.OnValidationRequested += component.OnValidateModel;
                     // TODO: Maybe we need to make it disable this in *Routes component
                     component._rootEditContextValidationMessageStore = new ValidationMessageStore(root.New);
                     component._rootEditContext = root.New;
@@ -60,7 +63,6 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
                 component.DeinitializeAncestorEditContext();
 
                 if (ancestor.IsNewNonNull) {
-                    ancestor.New.OnValidationRequested += component.OnValidateModel;
                     component._ancestorEditContext = ancestor.New;
                 }
             }
@@ -75,12 +77,12 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
                 }
             }
 
-            if (actor.IsOldReferenceDifferentToNew || ancestor.IsOldReferenceDifferentToNew) {
+            if (actor.IsOldReferenceDifferentToNew || root.IsOldReferenceDifferentToNew) {
                 component.DeinitializeActorEditContextValidationMessageStore();
 
-                if (actor.IsNewNonNull && ancestor.IsNewNonNull) {
-                    var isNewActorReferenceDifferentToNewAncestor = !ReferenceEquals(actor.New, ancestor.New);
-                    if (isNewActorReferenceDifferentToNewAncestor) {
+                if (actor.IsNewNonNull && root.IsNewNonNull) {
+                    var isNewActorReferenceDifferentToNewRoot = !ReferenceEquals(actor.New, root.New);
+                    if (isNewActorReferenceDifferentToNewRoot) {
                         actor.New.OnValidationRequested += component.BubbleUpOnValidationRequested;
                         // TODO: Maybe we need to make it disable this in *Routes component
                         component._actorEditContextValidationMessageStore = new ValidationMessageStore(actor.New);
@@ -106,6 +108,23 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
             }
         }
     }
+
+    internal virtual ParametersTransitionHandlerRegistry ParametersTransitionHandlerRegistry => T.ParametersTransitionHandlerRegistry;
+
+    internal static Action<ParametersTransition> SubscribeToRootEditContextOnValidationRequestedAction { get; } = static transition => {
+        var component = (EditContextualComponentBase<T>)transition.EditContextualComponentBase;
+
+        var root = transition.RootContextTransition;
+        if (root.IsOldReferenceDifferentToNew) {
+            if (root.IsOldNonNull) {
+                root.Old.OnValidationRequested -= component.OnValidateModel;
+            }
+
+            if (root.IsNewNonNull) {
+                root.New.OnValidationRequested += component.OnValidateModel;
+            }
+        }
+    };
 
     private bool _didParametersTransitionedOnce;
 
@@ -185,7 +204,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
             },
         };
 
-        foreach (var registrationItem in T.ParametersTransitionHandlerRegistry.GetRegistrationItems()) {
+        foreach (var registrationItem in ParametersTransitionHandlerRegistry.GetRegistrationItems()) {
             registrationItem.Handler(parametersTransition);
         }
 
@@ -199,20 +218,16 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
     protected virtual void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
-        Debug.Assert(_actorEditContext is not null);
-        _actorEditContext.NotifyValidationStateChanged();
     }
 
     protected virtual void OnValidateField(object? sender, FieldChangedEventArgs e)
     {
-        Debug.Assert(_actorEditContext is not null);
-        _actorEditContext.NotifyValidationStateChanged();
     }
 
     private void BubbleUpOnValidationRequested(object? sender, ValidationRequestedEventArgs e)
     {
-        Debug.Assert(_ancestorEditContext is not null);
-        _ancestorEditContext.Validate();
+        Debug.Assert(_rootEditContext is not null);
+        _rootEditContext.Validate();
     }
 
     protected void RenderEditContextualComponent(RenderTreeBuilder builder, RenderFragment? childContent)
@@ -255,6 +270,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         if (_ancestorEditContext is null) {
             return;
         }
+
         _ancestorEditContext.OnValidationRequested -= OnValidateModel;
         _ancestorEditContext = null;
     }

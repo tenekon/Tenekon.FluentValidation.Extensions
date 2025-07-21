@@ -33,7 +33,7 @@ record B(string? BA = null)
 `FieldIdentifier.Create(() => A.AB)`  has Model = A as A and FieldName = "AB" as string;
 `FieldIdentifier.Create(() => A.B.BA)`  has Model = B as B and FieldName = "BA" as string;
 
-Two examples of how field identifier is derived from expression.
+Two examples of how a `FieldIdentifier` is derived from a lambda expression.
 
 1. top-level field members
 
@@ -43,7 +43,7 @@ Imaging having A.B, and a validatable component validates against field member A
 
 Imaging having A.B where A.B is a list of C and you begin to render a validatable component that validates against `A.AB[0]`, then edit context A will invoke `NotifyFieldChanged(new FieldIdentifier(model: C, fieldName: "0"))` and triggering a corresponding OnFieldChanged event on edit context A.
 
-you you cannot simply pass around sub models to sub components and expect that validators registered to edit context A are able to validate against field members of sub models (non top-level field members) nor elements accessed by indexers.
+So, you can’t simply pass complex field members of the model into custom Blazor components that trigger validation on a cascaded `EditContext`, and expect that validators registered to that context can handle expressions like `() => complexField.Field`. These complex members are not reference-equal or structurally associated with the root model tracked by the `EditContext`, so validators have no reliable way to trace them back or determine their position within the original model.
 
 ## Existing Solutions (and Flaws)
 
@@ -60,9 +60,9 @@ There exists a few established Blazor integrations for FluentValidation:
 
 *1: "no edit context nesting" means you have to work with one and the same edit context when using the their FluentValidation aware validator component across the wohle component graph beneath (inside ChildContent RenderFragment) the EditForm (or similiar).
 
-## My Proposal
+## Proposal
 
-My solution is a more modular approach, where you plug'n'play validators to your behave, a solution that is not too opinionated, so what I ended up with?
+My proposal is a more modular approach, where you plug'n'play validators to your behave, a solution that is not too opinionated:
 
 1. `ComponentValidatorRootpath`
 2. `ComponentValidatorSubpath`
@@ -72,46 +72,50 @@ each having its own characteristicas.
 
 **`ComponentValidatorRootpath`**
 
-A. It searches for a ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example a `EditForm` or `CascadedValue` with an instance of `EditContext`.
+- A. It execpts an ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example a `EditForm` or `CascadedValue` with an instance of `EditContext`.
 
-B. The ancestor edit context becomes the root edit context if the ancestor edit itself does not have a key-value-pair stored in `Properties` of ancestor edit context that represents the root edit context, otherwise the ancestor edit context will now store itself as property key-value-pair to `Properties`.
+- B. The ancestor edit context becomes the root edit context if the ancestor edit itself does not have a key-value-pair stored in `Properties` of ancestor edit context that represents the root edit context, otherwise the ancestor edit context will now store itself as property key-value-pair to `Properties`.
 
-C. The ancestor edit context becomes the actor edit context. If using `ChildContent`, then the actor edit context is casdaded via `CascadedValue`, thus it can become the ancestor edit context to child validatable and validating components.
+- C. The ancestor edit context becomes the actor edit context. If using `ChildContent`, then the actor edit context is casdaded via `CascadedValue`, thus it can become the ancestor edit context to child validatable and validating components.
 
-D. The validator component acts on the model validation requests of the ancestor edit context and communicates the model validation results to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
+- D. The validator component acts on the model validation request of the actor edit context by bubbling it up to the root edit context, if the actor edit context is not reference equal to the root edit context.
 
-E. The validator component acts on the field validation requests of the actor edit context and communicates the field validation results to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
+- E. The validator component acts on the model validation request of the root edit context and communicates the model validation results
+  - A. to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
+  - B. to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context, if root edit context and actor edit context are not reference equal.
 
-F. If ancestor and actor edit context are not the same instance, then the validator component acts on the field validation requests of the actor edit context and communicates the field validation results to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context.
+- F. The validator component acts on the field validation request of the actor edit context and communicates the field validation results
+  - A. to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
+  - B. to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context, if root edit context and actor edit context are not reference equal.
 
 **`ComponentValidatorSubpath`**
 
-A. It searches for a ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example a `EditForm` or `CascadedValue` with an instance of `EditContext`.
+- A. It expects an ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example a `EditForm` or `CascadedValue` with an instance of `EditContext`.
 
-B. The ancestor edit context becomes the root edit context if the ancestor edit itself does not have a key-value-pair stored in `Properties` of ancestor edit context that represents the root edit context, otherwise the ancestor edit context will now store itself as property key-value-pair to `Properties`.
+- B. The ancestor edit context becomes the root edit context if the ancestor edit itself does not have a key-value-pair stored in `Properties` of ancestor edit context that represents the root edit context, otherwise the ancestor edit context will now store itself as property key-value-pair to `Properties`.
 
-C. The ancestor edit context won't becomes the actor edit context, instead a parameter-provided `EditContext` or a new edit context is created from parameter-provided `Model`. If using `ChildContent`, then the actor edit context is casdaded via `CascadedValue`, thus it can become the ancestor edit context to child validatable and validating components.
+- C. The ancestor edit context won't becomes the actor edit context, instead a parameter-provided `EditContext` or a new edit context is created from parameter-provided `Model`. If using `ChildContent`, then the actor edit context is casdaded via `CascadedValue`, thus it can become the ancestor edit context to child validatable and validating components.
 
-D. The validator component acts on the model validation requests of the ancestor edit context and communicates the model validation results to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
+- D. The validator component acts on the model validation request of the actor edit context by bubbling it up to the root edit context, if the actor edit context is not reference equal to the root edit context.
 
-E. If ancestor and actor edit context are not the same instance, then the validator component acts on the model validation requests of the actor edit context by delegating it to ancestor edit context and triggering C.
+- E. The validator component acts on the model validation request of the root edit context and communicates the model validation results
+  - A. to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
+  - B. to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context, if root edit context and actor edit context are not reference equal.
 
-F. The validator component acts on the field validation requests of the actor edit context and communicates the field validation results to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
-
-G. If ancestor and actor edit context are not the same instance, then the validator component acts on the field validation requests of the actor edit context and communicates the field validation results to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context.
+- F. The validator component acts on the field validation request of the actor edit context and communicates the field validation results
+  - A. to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
+  - B. to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context, if root edit context and actor edit context are not reference equal.
 
 **`ComponentValidatorRoutes`**
 
-A. It searches for a ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example a `EditForm` or `CascadedValue` with an instance of `EditContext`.
+- A. It expects an ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example `EditForm` or `CascadedValue` with an instance of `EditContext`.
 
-B. The ancestor edit context becomes the root edit context if the ancestor edit itself does not have a key-value-pair stored in `Properties` of ancestor edit context that represents the root edit context, otherwise the ancestor edit context will now store itself as property key-value-pair to `Properties`.
+- B. It expects an ancestor component validator of type `IComponentValidator` and does not work without one, thus the validator component must be a child of for example `ComponentValidatorRootpath` or `ComponentValidatorSubpath`.
 
-TODO
+- C. The ancestor edit context becomes the root edit context if the ancestor edit itself does not have a key-value-pair stored in `Properties` of ancestor edit context that represents the root edit context, otherwise the ancestor edit context will now store itself as property key-value-pair to `Properties`.
 
-<!-- C. The ancestor edit context won't becomes the actor edit context, instead a new edit context is created with the model of the ancestor edit context, then the actor edit context is casdaded via `CascadedValue`, thus it can become the ancestor edit context to child validatable and validating components.
+- D. The ancestor edit context won't becomes the actor edit context, instead a new edit context is created with the model of the ancestor edit context, then the actor edit context is casdaded via `CascadedValue`, thus it can become the ancestor edit context to child validatable and validating components.
 
-E. If ancestor and actor edit context are not the same instance, then the validator component acts on the model validation requests of the actor edit context by delegating it to ancestor edit context and triggering C.
+- E. The validator component acts on the model validation request of the actor edit context by bubbling it up to the root edit context, if the actor edit context is not reference equal to the root edit context.
 
-F. The validator component acts on the field validation requests of the actor edit context and communicates the field validation results to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
-
-G. If ancestor and actor edit context are not the same instance, then the validator component acts on the field validation requests of the actor edit context and communicates the field validation results to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context. -->
+- F. The validator component acts on the field validation request of the actor edit context by delegating it to the ancestor component validator.
