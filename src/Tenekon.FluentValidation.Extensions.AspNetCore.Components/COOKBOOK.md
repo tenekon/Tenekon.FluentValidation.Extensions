@@ -51,6 +51,9 @@ Use when you want to attach validation logic directly to the root `EditForm`, ty
 ```razor
 <EditForm Model="Model">
     <ComponentValidatorRootpath ValidatorType="typeof(MyValidator)" />
+    
+    <InputText @bind-Value="Model.SomeText" />
+    <InputNumber @bind-Value="Model.SomeNumber" />
 </EditForm>
 ```
 
@@ -72,7 +75,8 @@ Use when validating a **specific model subset** or child component independently
 ```razor
 <EditForm Model="MainModel">
     <ComponentValidatorSubpath Model="MainModel.Address" ValidatorType="typeof(AddressValidator)">
-        <!-- Components like inputs that should be validated by this subpath must be placed in ChildContent -->
+        <InputText @bind-Value="MainModel.Address.City" />
+        <InputNumber @bind-Value="MainModel.Address.Zip" />
     </ComponentValidatorSubpath>
 </EditForm>
 ```
@@ -97,9 +101,13 @@ When you want **both** top-level and scoped validation (e.g. `MainModel` + `Main
 <EditForm Model="MainModel">
     <ComponentValidatorRootpath ValidatorType="typeof(MainModelValidator)" />
 
-    <ComponentValidatorSubpath Model="MainModel.Address" ValidatorType="typeof(AddressValidator)">
-        <!-- Components like inputs that should be validated by this subpath must be placed in ChildContent -->
-    </ComponentValidatorSubpath>
+    @{
+        var address = MainModel.Address;
+        <ComponentValidatorSubpath Model="address" ValidatorType="typeof(AddressValidator)">
+                <InputText @bind-Value="address.City" />
+                <InputNumber @bind-Value="address.Zip" />
+        </ComponentValidatorSubpath>
+    }
 </EditForm>
 ```
 
@@ -124,7 +132,8 @@ For **multi-step or wizard-style forms** where nested submodels determine what g
     <ComponentValidatorRootpath 
         ValidatorType="typeof(MyValidator)"
         Routes="[() => Model.Step1, () => Model.Step2]">
-        <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
+            <InputText @bind-Value="Model.Step1.SomeText" />
+            <InputNumber @bind-Value="Model.Step2.SomeNumber" />
     </ComponentValidatorRootpath>
 </EditForm>
 ```
@@ -147,12 +156,16 @@ Combine scoped submodel validation with route awareness (e.g. wizard sections).
 
 ```razor
 <EditForm Model="Model">
-    <ComponentValidatorSubpath 
-        Model="Model.StepData" 
-        ValidatorType="typeof(StepValidator)"
-        Routes="[() => Model.StepData.Section1, () => Model.StepData.Section2]">
-        <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
-    </ComponentValidatorSubpath>
+    @{
+        var stepData = Model.StepData;
+        <ComponentValidatorSubpath 
+            Model="stepData" 
+            ValidatorType="typeof(StepValidator)"
+            Routes="[() => stepData.Section1, () => stepData.Section2]">
+                <InputText @bind-Value="stepData.Section1.SomeText" />
+                <InputNumber @bind-Value="stepData.Section2.SomeNumber" />
+        </ComponentValidatorSubpath>
+    }
 </EditForm>
 ```
 
@@ -175,7 +188,8 @@ Use when you want to decouple routing logic into a `<ComponentValidatorRoutes></
 <EditForm Model="Model">
     <ComponentValidatorRootpath ValidatorType="typeof(MyValidator)">
         <ComponentValidatorRoutes Routes="[() => Model.PartA, () => Model.PartB]">
-            <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
+            <InputText @bind-Value="Model.PartA.SomeText" />
+            <InputNumber @bind-Value="Model.PartB.SomeNumber" />
         </ComponentValidatorRoutes>
     </ComponentValidatorRootpath>
 </EditForm>
@@ -199,11 +213,15 @@ Use to nest `ComponentValidatorRoutes` manually inside a scoped submodel validat
 
 ```razor
 <EditForm Model="Model">
-    <ComponentValidatorSubpath Model="Model.Step" ValidatorType="typeof(StepValidator)">
-        <ComponentValidatorRoutes Routes="[() => Model.PartA, () => Model.PartB]">
-            <!-- Components like inputs that should be validated by this routed context must be placed in ChildContent -->
-        </ComponentValidatorRoutes>
-    </ComponentValidatorSubpath>
+    @{
+        var step = Model.Step;
+        <ComponentValidatorSubpath Model="step" ValidatorType="typeof(StepValidator)">
+            <ComponentValidatorRoutes Routes="[() => step.PartA, () => step.PartB]">
+                <InputText @bind-Value="step.PartA.SomeText" />
+                <InputNumber @bind-Value="step.PartB.SomeNumber" />
+            </ComponentValidatorRoutes>
+        </ComponentValidatorSubpath>
+    }
 </EditForm>
 ```
 
