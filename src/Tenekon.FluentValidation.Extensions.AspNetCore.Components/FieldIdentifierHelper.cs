@@ -37,11 +37,12 @@ internal class FieldIdentifierHelper
                 nextToken = nextToken.Substring(startIndex: 0, nextToken.Length - 1);
 
                 var prop = currentModel.GetType()
-                    .GetProperties().FirstOrDefault(e => e.Name == "Item" && e.GetIndexParameters().Length == 1) ?? currentModel.GetType()
+                    .GetProperties()
+                    .FirstOrDefault(e => e.Name == "Item" && e.GetIndexParameters().Length == 1) ?? currentModel.GetType()
                     .GetInterfaces()
-                    .FirstOrDefault(
-                        e => (e.IsGenericType && e.GetGenericTypeDefinition() == typeof(IReadOnlyList<>)) ||
-                            e.GetGenericTypeDefinition() == typeof(IList<>))?.GetProperty("Item"); //e.g. arrays
+                    .FirstOrDefault(e => (e.IsGenericType && e.GetGenericTypeDefinition() == typeof(IReadOnlyList<>)) ||
+                        e.GetGenericTypeDefinition() == typeof(IList<>))
+                    ?.GetProperty("Item"); //e.g. arrays
 
                 if (prop is not null) {
                     // we've got an Item property

@@ -12,7 +12,7 @@ internal class ParametersTransitionHandlerRegistry
         }
 
         if (addingPosition == HandlerAddingPosition.Start) {
-            _handlerList.Insert(0, new RegistrationItem(handler));
+            _handlerList.Insert(index: 0, new RegistrationItem(handler));
             return;
         }
 

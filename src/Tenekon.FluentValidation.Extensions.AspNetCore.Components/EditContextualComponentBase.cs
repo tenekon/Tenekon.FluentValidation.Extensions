@@ -173,7 +173,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
         var parametersTransition = new ParametersTransition {
             EditContextualComponentBase = this,
-            ActorContextTransition = new EditContextTransition() {
+            ActorContextTransition = new EditContextTransition {
                 Old = _actorEditContext,
                 New = actorEditContext,
                 IsFirstTransition = isFirstTransition
@@ -183,11 +183,11 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
                 New = ancestorEditContext,
                 IsFirstTransition = isFirstTransition
             },
-            RootContextTransition = new EditContextTransition() {
+            RootContextTransition = new EditContextTransition {
                 Old = _rootEditContext,
                 New = rootEditContext,
                 IsFirstTransition = isFirstTransition
-            },
+            }
         };
 
         foreach (var registrationItem in ParametersTransitionHandlerRegistry.GetRegistrationItems()) {
@@ -300,7 +300,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         var parametersTransition = new ParametersTransition {
             IsDisposing = true,
             EditContextualComponentBase = this,
-            ActorContextTransition = new EditContextTransition() {
+            ActorContextTransition = new EditContextTransition {
                 Old = _actorEditContext,
                 New = null,
                 IsFirstTransition = isFirstTransition
@@ -310,11 +310,11 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
                 New = null,
                 IsFirstTransition = isFirstTransition
             },
-            RootContextTransition = new EditContextTransition() {
+            RootContextTransition = new EditContextTransition {
                 Old = _rootEditContext,
                 New = null,
                 IsFirstTransition = isFirstTransition
-            },
+            }
         };
 
         foreach (var registrationItem in T.ParametersTransitionHandlerRegistry.GetRegistrationItems()) {

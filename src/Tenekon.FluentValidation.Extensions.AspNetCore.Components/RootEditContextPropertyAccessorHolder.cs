@@ -6,8 +6,7 @@ public static class RootEditContextPropertyAccessorHolder
 {
     internal static readonly object s_lookupKey = new LookupKey();
 
-    internal static readonly CounterBasedEditContextPropertyClassValueAccessor<EditContext> s_accessor =
-        new(s_lookupKey);
+    internal static readonly CounterBasedEditContextPropertyClassValueAccessor<EditContext> s_accessor = new(s_lookupKey);
 
     private class LookupKey;
 }

@@ -25,7 +25,7 @@ internal readonly struct CounterBasedEditContextPropertyClassValueAccessor<T>(ob
         return propertyValue;
     }
 
-    public bool TryGetPropertyValue(EditContext owner, [NotNullWhen(true)] out T? value)
+    public bool TryGetPropertyValue(EditContext owner, [NotNullWhen(returnValue: true)] out T? value)
     {
         if (!owner.Properties.TryGetValue(key, out var originalPropertyValue)) {
             value = null;
@@ -37,7 +37,7 @@ internal readonly struct CounterBasedEditContextPropertyClassValueAccessor<T>(ob
         return true;
     }
 
-    internal bool TryGetPropertyValue(EditContext owner, [NotNullWhen(true)] out T? value, out int counter)
+    internal bool TryGetPropertyValue(EditContext owner, [NotNullWhen(returnValue: true)] out T? value, out int counter)
     {
         if (!owner.Properties.TryGetValue(key, out var originalPropertyValue)) {
             value = null;

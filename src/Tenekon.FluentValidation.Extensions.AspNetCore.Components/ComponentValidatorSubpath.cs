@@ -7,16 +7,14 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextualComponentTrait, IComponentValidatorSubpathTrait
 {
-    private static Exception DefaultExceptionFactoryImpl(IComponentValidatorSubpathTrait.ErrorContext context)
-    {
-        return context.Identifier switch {
+    private static Exception DefaultExceptionFactoryImpl(IComponentValidatorSubpathTrait.ErrorContext context) =>
+        context.Identifier switch {
             IComponentValidatorSubpathTrait.ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
                 $"{context.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter, but not both."),
             IComponentValidatorSubpathTrait.ErrorIdentifier.NoActorEditContextAndNoModel => new InvalidOperationException(
                 $"{context.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter."),
             _ => IComponentValidatorSubpathTrait.DefaultExceptionFactory(context)
         };
-    }
 
     public static readonly Func<IComponentValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
         DefaultExceptionFactoryImpl;

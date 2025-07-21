@@ -60,16 +60,13 @@ public static class ComponentValidatorBasicTestCases
                     p.Add(x => x.Validator, CreateValidator(validatorType));
                     p.Add(x => x.EditContext, ctx);
                 })
-        ],
+        ]
     ];
 }
 
 public class ComponentValidatorBasicTests : TestContext
 {
-    public ComponentValidatorBasicTests()
-    {
-        Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>(includeInternalTypes: true);
-    }
+    public ComponentValidatorBasicTests() => Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>(includeInternalTypes: true);
 
     [Theory]
     [MemberData(nameof(ComponentValidatorBasicTestCases.All), MemberType = typeof(ComponentValidatorBasicTestCases))]
@@ -78,7 +75,7 @@ public class ComponentValidatorBasicTests : TestContext
     {
         var modelA = new { A = new List<string>() };
         var field = FieldIdentifier.Create(() => modelA.A[0]);
-        
+
         var model = new Model("World");
         var context = new EditContext(model);
 
@@ -92,7 +89,7 @@ public class ComponentValidatorBasicTests : TestContext
 
         var cutActorEditContex = cut.Instance.ActorEditContext;
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
-        counter.ShouldBe(1);
+        counter.ShouldBe(expected: 1);
 
         DisposeComponents();
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(context, out _).ShouldBeFalse();
@@ -115,7 +112,7 @@ public class ComponentValidatorBasicTests : TestContext
 
         var cutActorEditContex = cut.Instance.ActorEditContext;
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
-        counter.ShouldBe(1);
+        counter.ShouldBe(expected: 1);
 
         DisposeComponents();
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
@@ -141,7 +138,7 @@ public class ComponentValidatorBasicTests : TestContext
         isValid.ShouldBeFalse();
 
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
-        counter.ShouldBe(1);
+        counter.ShouldBe(expected: 1);
 
         DisposeComponents();
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
@@ -170,12 +167,12 @@ public class ComponentValidatorBasicTests : TestContext
         var cutActorEditContext = cut.Instance.ActorEditContext;
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContext, out _, out var cutActorEditContextCounter)
             .ShouldBeTrue();
-        cutActorEditContextCounter.ShouldBe(2);
+        cutActorEditContextCounter.ShouldBe(expected: 2);
 
         RootEditContextPropertyAccessorHolder.s_accessor
             .TryGetPropertyValue(routesActorEditContext, out _, out var routesActorEditContextCounter)
             .ShouldBeTrue();
-        routesActorEditContextCounter.ShouldBe(2);
+        routesActorEditContextCounter.ShouldBe(expected: 2);
 
         DisposeComponents();
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContext, out _).ShouldBeFalse();
@@ -189,7 +186,7 @@ file record Model(string? Hello = null)
 
     [field: AllowNull]
     [field: MaybeNull]
-    public ChildModel Child { get => field ??= new ChildModel(); }
+    public ChildModel Child => field ??= new ChildModel();
 
     public record ChildModel(string? Hello = null)
     {

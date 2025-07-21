@@ -407,7 +407,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         {
             Initialized = 1 << 0,
             SyncDisposed = 1 << 1,
-            AsyncDisposed = 1 << 2,
+            AsyncDisposed = 1 << 2
         }
     }
 }

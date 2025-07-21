@@ -23,7 +23,7 @@ internal sealed class EditContextTransition
         }
     }
 
-    [MemberNotNullWhen(true, nameof(Old))]
+    [MemberNotNullWhen(returnValue: true, nameof(Old))]
     public bool IsOldNonNull => Old is not null;
 
     /// <summary>

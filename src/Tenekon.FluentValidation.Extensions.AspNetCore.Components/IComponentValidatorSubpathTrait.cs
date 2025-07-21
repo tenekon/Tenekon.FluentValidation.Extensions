@@ -21,7 +21,7 @@ public interface IComponentValidatorSubpathTrait
     /// <summary>
     /// Indicates having non-null <see cref="ActorEditContext"/> parameter.
     /// </summary>
-    [MemberNotNullWhen(true, nameof(ActorEditContext))]
+    [MemberNotNullWhen(returnValue: true, nameof(ActorEditContext))]
     bool HasActorEditContextBeenSetExplicitly { get; set; }
 
     EditContext? ActorEditContext { get; set; }
