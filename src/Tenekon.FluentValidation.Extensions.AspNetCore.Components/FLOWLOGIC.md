@@ -1,12 +1,11 @@
-# :microscope: Flow logic
+<!-- omit from toc -->
+# :microscope: Flow logic [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
 <!-- omit from toc -->
 ## Table of Contents
 
-- [:microscope: Flow logic](#microscope-flow-logic)
-  - [Component Interaction](#component-interaction)
-  - [Event Handling](#event-handling)
-
+- [Component Interaction](#component-interaction)
+- [Event Handling](#event-handling)
 
 ## Component Interaction
 

@@ -20,9 +20,9 @@
 
 ## Packages
 
-| Package                                                     | Description                                  |
-| ----------------------------------------------------------- | -------------------------------------------- |
-| `Tenekon.FluentValidation.Extensions.AspNetCore.Components` | Core Blazor integration for FluentValidation |
+| Package Description                                                                                                                                     |                                              |                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`Tenekon.FluentValidation.Extensions.AspNetCore.Components`](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components) | Core Blazor integration for FluentValidation | [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components) |
 
 ### `Tenekon.FluentValidation.Extensions.AspNetCore.Components`
 
@@ -47,6 +47,8 @@ library enhances component-level validation in Blazor applications using FluentV
   how component validators interact with each other and Blazor's `EditContext`.
 
 ### Installation
+
+[![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
 ```bash
 dotnet add package Tenekon.FluentValidation.Extensions.AspNetCore.Components

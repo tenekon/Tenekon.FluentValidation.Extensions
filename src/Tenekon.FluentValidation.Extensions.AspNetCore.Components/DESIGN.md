@@ -1,7 +1,18 @@
-# Design
+<!-- omit from toc -->
+# Design [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
 <!-- problem:
 https://github.com/dotnet/aspnetcore/issues/57573#issuecomment-2744321059 -->
+
+<!-- omit from toc -->
+## Table of Contents
+
+- [💥 Problem Overview](#-problem-overview)
+- [🔍 Behavior of EditContext](#-behavior-of-editcontext)
+- [🧠 Field Identifier Semantics](#-field-identifier-semantics)
+- [Existing Solutions (and Flaws)](#existing-solutions-and-flaws)
+- [Proposal](#proposal)
+
 
 ## 💥 Problem Overview
 
