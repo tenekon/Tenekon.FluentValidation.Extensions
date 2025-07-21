@@ -231,7 +231,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
         builder.OpenComponent<CascadingValue<EditContext>>(sequence: 1);
         // Because edit context instances can stay constant but its model not, we have to set a unique component identity 
-        builder.SetKey(new CascadedValueKey(_actorEditContext, _actorEditContext.Model));
+        builder.SetKey(new EditContextIdentitySnapshot(_actorEditContext, _actorEditContext.Model));
         builder.AddComponentParameter(sequence: 2, "IsFixed", value: true);
         builder.AddComponentParameter(sequence: 3, "Value", _actorEditContext);
         builder.AddComponentParameter(sequence: 4, nameof(CascadingValue<>.ChildContent), childContent);
@@ -363,13 +363,14 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
     #endregion
 
-    private class CascadedValueKey(EditContext editContext, object model)
+    // We want to detect not only changes to the EditContext reference, but also to its associated Model reference.
+    private class EditContextIdentitySnapshot(EditContext editContext, object model)
     {
         private readonly EditContext _editContext = editContext;
         private readonly object _model = model;
 
         public override bool Equals(object? obj) =>
-            obj is CascadedValueKey identity && ReferenceEquals(_editContext, identity._editContext) &&
+            obj is EditContextIdentitySnapshot identity && ReferenceEquals(_editContext, identity._editContext) &&
             ReferenceEquals(_model, identity._model);
 
         public override int GetHashCode() => HashCode.Combine(RuntimeHelpers.GetHashCode(_editContext), RuntimeHelpers.GetHashCode(_model));
