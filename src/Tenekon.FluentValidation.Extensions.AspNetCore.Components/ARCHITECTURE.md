@@ -1,5 +1,5 @@
 <!-- omit from toc -->
-# Design [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
+# :open_book: Component Validator Architecture [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
 <!-- problem:
 https://github.com/dotnet/aspnetcore/issues/57573#issuecomment-2744321059 -->
@@ -44,13 +44,13 @@ record B(string? BA = null)
 `FieldIdentifier.Create(() => A.AB)`  has Model = A as A and FieldName = "AB" as string;
 `FieldIdentifier.Create(() => A.B.BA)`  has Model = B as B and FieldName = "BA" as string;
 
-Two examples of how a `FieldIdentifier` is derived from a lambda expression.
+Two examples of how a `FieldIdentifier` is derived from a lambda expression:
 
-1. top-level field members
+**1. top-level field members**
 
 Imaging having A.B, and a validatable component validates against field member A.B.BA, then edit context A will invoke `NotifyFieldChanged(new FieldIdentifier(model: B, fieldName: "BA"))` and triggering a corresponding OnFieldChanged event on edit context A.
 
-2. list field members
+**2. list field members**
 
 Imaging having A.B where A.B is a list of C and you begin to render a validatable component that validates against `A.AB[0]`, then edit context A will invoke `NotifyFieldChanged(new FieldIdentifier(model: C, fieldName: "0"))` and triggering a corresponding OnFieldChanged event on edit context A.
 
@@ -69,7 +69,7 @@ There exists a few established Blazor integrations for FluentValidation:
 3. vNext.BlazorComponents.FluentValidation
    ✅ solid, but desired default behaviour having AssemblyScannerValidatorFactory as fallback in case of ServiceProviderValidatorFactory results into null-validator?, no edit context nesting*1
 
-*1: "no edit context nesting" means you have to work with one and the same edit context when using the their FluentValidation aware validator component across the wohle component graph beneath (inside ChildContent RenderFragment) the EditForm (or similiar).
+*1: "no edit context nesting" means you have to work with one and the same edit context when using the FluentValidation aware validator component across the wohle component graph beneath (inside ChildContent RenderFragment) the EditForm (or similiar).
 
 ## Proposal
 

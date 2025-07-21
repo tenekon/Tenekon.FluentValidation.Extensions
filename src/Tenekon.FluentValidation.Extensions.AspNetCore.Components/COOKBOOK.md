@@ -5,7 +5,7 @@ A practical guide to using `ComponentValidatorRootpath`, `ComponentValidatorSubp
 <!-- omit from toc -->
 ## Table of Contents
 
-- [📘 Component Validator Cookbook ](#-component-validator-cookbook-)
+- [📘 Component Validator Cookbook ](#-validator-component-cookbook-)
   - [✅ Scenario 1: EditForm → Rootpath](#-scenario-1-editform--rootpath)
     - [🧠 When to use](#-when-to-use)
     - [✨ Example](#-example)
