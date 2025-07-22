@@ -1,5 +1,5 @@
 <!-- omit from toc -->
-# Tenekon.FluentValidation.Extensions
+# Tenekon.FluentValidation.Extensions [![License](https://img.shields.io/github/license/tenekon/Tenekon.FluentValidation.Extensions)](https://github.com/tenekon/Tenekon.FluentValidation.Extensions/blob/main/LICENSE) [![Activity](https://img.shields.io/github/last-commit/tenekon/Tenekon.FluentValidation.Extensions)](https://github.com/tenekon/Tenekon.FluentValidation.Extensions/commits/main/) [![Starts](https://img.shields.io/github/stars/tenekon/Tenekon.FluentValidation.Extensions)](https://github.com/tenekon/Tenekon.FluentValidation.Extensions/stargazers)
 
 > :construction: This is a **new** project. You are very welcome to participate in this project, help shape the public API and share ideas. The project is currently in _alpha_ state, so the public API may change significantly.
 
