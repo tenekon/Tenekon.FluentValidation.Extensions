@@ -85,7 +85,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
             throw new NotImplementedException(
                 $"{nameof(EditContext)} does not implement the {EditContextFieldStatesFieldName} field anymore.");
 
-    private Dictionary<ModelIdentifier, FieldIdentifier>? _modelRoutes;
+    private Dictionary<ModelIdentifier, FieldIdentifier>? _subModelAccessPathMap;
     private ModelIdentifier _ancestorEditContextModelIdentifier;
 
     [CascadingParameter]
@@ -133,8 +133,8 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
         void InitializeModelRoutes()
         {
-            if (_modelRoutes is not { } nestedModelRoutes) {
-                _modelRoutes = nestedModelRoutes = [];
+            if (_subModelAccessPathMap is not { } nestedModelRoutes) {
+                _subModelAccessPathMap = nestedModelRoutes = [];
             } else {
                 nestedModelRoutes.Clear();
             }
@@ -166,35 +166,35 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
         var componentValidator = RoutesOwningComponentValidationNotifier;
 
-        // Scenario 1: Given () => City.Address.Street, then Model is Address and Street is FieldName 
-        var directFieldIdentifier = e.FieldIdentifier;
-        var directModelIdentifier = new ModelIdentifier(directFieldIdentifier.Model);
-        if (directModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
+        // Scenario 1: Given () => City.Address.Street, then Model = Address and FieldName = "Street" 
+        var subFieldIdentifier = e.FieldIdentifier;
+        var subFieldModelIdentifier = new ModelIdentifier(subFieldIdentifier.Model);
+        if (subFieldModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
             var directFieldValidationRequestArgs = new ComponentValidatorDirectFieldValidationRequestedArgs(
                 this,
                 sender,
-                directFieldIdentifier);
+                subFieldIdentifier);
             componentValidator.NotifyDirectFieldValidationRequested(directFieldValidationRequestArgs);
             goto notifyValidationStateChanged;
         }
 
-        Debug.Assert(_modelRoutes is not null);
-        // Scenario 1: Using Address as the ModelIdentifier key,
-        //  get the model route with City as the Model and City.Address as the FieldName
-        if (!_modelRoutes.TryGetValue(directModelIdentifier, out var nestedModelRoute)) {
+        Debug.Assert(_subModelAccessPathMap is not null);
+        // Scenario 1: Using Address (Model) as the ModelIdentifier key,
+        //  get the model route with City as Model and "City.Address" as FieldName
+        if (!_subModelAccessPathMap.TryGetValue(subFieldModelIdentifier, out var subModelAccessPath)) {
             throw new InvalidOperationException(
-                $"The model of type {directModelIdentifier.Model.GetType()} is unrecognized. Is it registered as a potencial route?");
+                $"The model of type {subFieldModelIdentifier.Model.GetType()} is unrecognized. Is it registered as a potencial route?");
         }
 
         // Scenario 1: Concenate City.Address and Street
-        var nestedFieldPath = $"{nestedModelRoute.FieldName}.{directFieldIdentifier.FieldName}";
+        var fullFieldPathString = $"{subModelAccessPath.FieldName}.{subFieldIdentifier.FieldName}";
         // Scenario 1: Build a FieldIdentifier with City as the Model and City.Address.Street as the FieldName
-        var nestedFieldIdentifier = new FieldIdentifier(nestedModelRoute.Model, nestedFieldPath);
+        var fullFieldPath = new FieldIdentifier(subModelAccessPath.Model, fullFieldPathString);
         var nestedFieldValidationRequestedArgs = new ComponentValidatorNestedFieldValidationRequestedArgs(
             this,
             sender,
-            directFieldIdentifier,
-            nestedFieldIdentifier);
+            fullFieldPath,
+            subFieldIdentifier);
         componentValidator.NotifyNestedFieldValidationRequested(nestedFieldValidationRequestedArgs);
 
         notifyValidationStateChanged:

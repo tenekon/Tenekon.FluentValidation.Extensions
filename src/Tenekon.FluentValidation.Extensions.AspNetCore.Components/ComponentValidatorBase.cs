@@ -276,18 +276,18 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     void IComponentValidator.ValidateDirectField(FieldIdentifier fieldIdentifier) => ValidateDirectField(fieldIdentifier);
 
-    private void ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier)
+    private void ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier)
     {
         Debug.Assert(_validator is not null);
 
-        if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(nestedFieldIdentifier.Model.GetType())) {
+        if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(fullFieldPath.Model.GetType())) {
             Logger?.LogWarning(
                 "Nested field identifier validation was supressed, because its model is invalidatable: {}",
-                nestedFieldIdentifier.Model.GetType());
+                fullFieldPath.Model.GetType());
             return;
         }
 
-        var validationContext = ValidationContext<object>.CreateWithOptions(nestedFieldIdentifier.Model, ApplyValidationStrategy2);
+        var validationContext = ValidationContext<object>.CreateWithOptions(fullFieldPath.Model, ApplyValidationStrategy2);
         ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
         var validationResult = _validator.Validate(validationContext);
 
@@ -296,7 +296,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             if (error.Severity > MinimumSeverity) {
                 continue;
             }
-            AddValidationMessageToStores(directFieldIdentifier, error.ErrorMessage);
+            AddValidationMessageToStores(subFieldIdentifier, error.ErrorMessage);
         }
 
         LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
@@ -304,7 +304,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
         void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
         {
-            validationStrategy.IncludeProperties(nestedFieldIdentifier.FieldName);
+            validationStrategy.IncludeProperties(fullFieldPath.FieldName);
             _applyValidationStrategyAction.Invoke(validationStrategy);
         }
     }
@@ -312,10 +312,10 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
 
     void IComponentValidationNotifier.NotifyNestedFieldValidationRequested(ComponentValidatorNestedFieldValidationRequestedArgs args) =>
-        ValidateNestedField(args.DirectFieldIdentifier, args.NestedFieldIdentifier);
+        ValidateNestedField(args.FullFieldPath, args.SubFieldIdentifier);
 
-    void IComponentValidator.ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier) =>
-        ValidateNestedField(directFieldIdentifier, nestedFieldIdentifier);
+    void IComponentValidator.ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier) =>
+        ValidateNestedField(fullFieldPath, subFieldIdentifier);
 
     protected override void BuildRenderTree(RenderTreeBuilder builder) =>
         RenderComponentValidator(builder, _renderComponentValidatorContent);

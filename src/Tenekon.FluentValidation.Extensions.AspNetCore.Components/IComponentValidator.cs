@@ -23,5 +23,5 @@ internal interface IComponentValidator
     /// <summary>
     /// Initiates a nested-level field validation in this component validator.
     /// </summary>
-    void ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier);
+    void ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier);
 }
