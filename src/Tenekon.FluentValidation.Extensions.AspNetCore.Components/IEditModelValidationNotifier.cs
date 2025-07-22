@@ -2,10 +2,10 @@
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-internal interface IComponentValidationNotifier
+internal interface IEditModelValidationNotifier
 {
     bool IsInScope(EditContext candidate);
-    void NotifyModelValidationRequested(EditModelValidatorModelValidationRequestedArgs args);
-    void NotifyDirectFieldValidationRequested(EditModelValidatorDirectFieldValidationRequestedArgs args);
-    void NotifyNestedFieldValidationRequested(EditModelValidatorNestedFieldValidationRequestedArgs args);
+    void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args);
+    void NotifyDirectFieldValidationRequested(EditModelDirectFieldValidationRequestedArgs args);
+    void NotifyNestedFieldValidationRequested(EditModelNestedFieldValidationRequestedArgs args);
 }

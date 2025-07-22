@@ -157,10 +157,10 @@ public class EditModelValidatorBasicTests : TestContext
             testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
             parameters.Add<Expression<Func<object>>[]?>(x => x.Routes, [() => model.Child]);
         });
-        var routes = cut.FindComponent<EditModelValidatorRoutes>();
+        var subPath = cut.FindComponent<EditModelSubpath>();
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Child.Hello);
-        var routesActorEditContext = routes.Instance.ActorEditContext;
-        routesActorEditContext.NotifyFieldChanged(modelFieldIdentifier);
+        var subPathActorEditContext = subPath.Instance.ActorEditContext;
+        subPathActorEditContext.NotifyFieldChanged(modelFieldIdentifier);
         var isValid = context.IsValid(modelFieldIdentifier);
         isValid.ShouldBeFalse();
 
@@ -170,13 +170,13 @@ public class EditModelValidatorBasicTests : TestContext
         cutActorEditContextCounter.ShouldBe(expected: 2);
 
         RootEditContextPropertyAccessorHolder.s_accessor
-            .TryGetPropertyValue(routesActorEditContext, out _, out var routesActorEditContextCounter)
+            .TryGetPropertyValue(subPathActorEditContext, out _, out var subPathActorEditContextCounter)
             .ShouldBeTrue();
-        routesActorEditContextCounter.ShouldBe(expected: 2);
+        subPathActorEditContextCounter.ShouldBe(expected: 2);
 
         DisposeComponents();
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContext, out _).ShouldBeFalse();
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(routesActorEditContext, out _).ShouldBeFalse();
+        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(subPathActorEditContext, out _).ShouldBeFalse();
     }
 }
 

@@ -10,6 +10,16 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 file static class EditContextAccessor
 {
+    private const string EditContextFieldStatesFieldName = "_fieldStates";
+
+    // We cannot use UnsafeAccessor and must work with reflection because part of the targeting signature is internal. :/
+    [field: AllowNull]
+    [field: MaybeNull]
+    public static FieldInfo EditContextFieldStatesMemberAccessor =>
+        field ??= typeof(EditContext).GetField(EditContextFieldStatesFieldName, BindingFlags.Instance | BindingFlags.NonPublic) ??
+            throw new NotImplementedException(
+                $"{nameof(EditContext)} does not implement the {EditContextFieldStatesFieldName} field anymore.");
+
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "<Properties>k__BackingField")]
     public static extern ref EditContextProperties GetProperties(EditContext editContext);
 
@@ -22,17 +32,17 @@ file static class EditContextAccessor
 //   because the components alone wants to act on OnFieldChanged and OnValidationRequested independently from the ancestor edit context.
 // CASCADING PARAMETER DEPENDENCIES:
 //   IEditModelValidator provided by EditModelValidatorSubpath or EditModelValidatorRootpath
-public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelValidatorRoutes>, IEditContextualComponentTrait,
+public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, IEditContextualComponentTrait, IEditModelSubpathTrait,
     IHandlingParametersTransition
 {
     static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
 
-    static EditModelValidatorRoutes()
+    static EditModelSubpath()
     {
-        HandlingParametersTransitionAccessor<EditModelValidatorRoutes>.ParametersTransitionHandlerRegistry.RemoveHandler(
+        HandlingParametersTransitionAccessor<EditModelSubpath>.ParametersTransitionHandlerRegistry.RemoveHandler(
             SubscribeToRootEditContextOnValidationRequestedAction);
 
-        HandlingParametersTransitionAccessor<EditModelValidatorRoutes>.ParametersTransitionHandlerRegistry.RegisterHandler(
+        HandlingParametersTransitionAccessor<EditModelSubpath>.ParametersTransitionHandlerRegistry.RegisterHandler(
             CopyAncestorEditContextFieldReferencesToActorEditContext,
             // If we want to make the registry API public, we should consider to make adding position relative to already added handlers,
             // because now it is sufficient to insert the handler at the start to fulfill the contract required by the above handler.
@@ -42,6 +52,11 @@ public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelVal
 
         static void CopyAncestorEditContextFieldReferencesToActorEditContext(ParametersTransition transition)
         {
+            var component = (EditModelSubpath)transition.EditContextualComponentBase;
+            if (component._useEditContextSentinel) {
+                return;
+            }
+
             var ancestor = transition.AncestorEditContextTransition;
             var actor = transition.ActorEditContextTransition;
 
@@ -57,7 +72,7 @@ public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelVal
                     //  Copy field references before any mutation of any edit context on every parameters transition.
 
                     // Cascade EditContext._fieldStates
-                    var editContextFieldStatesMemberAccessor = EditContextFieldStatesMemberAccessor;
+                    var editContextFieldStatesMemberAccessor = EditContextAccessor.EditContextFieldStatesMemberAccessor;
                     var fieldStates = editContextFieldStatesMemberAccessor.GetValue(ancestor.New);
                     editContextFieldStatesMemberAccessor.SetValue(actor.New, fieldStates);
 
@@ -73,41 +88,66 @@ public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelVal
         }
     }
 
-    private const string EditContextFieldStatesFieldName = "_fieldStates";
-
     private static readonly object s_modelSentinel = new();
 
-    // We cannot use UnsafeAccessor and must work with reflection because part of the targeting signature is internal. :/
-    [field: AllowNull]
-    [field: MaybeNull]
-    private static FieldInfo EditContextFieldStatesMemberAccessor =>
-        field ??= typeof(EditContext).GetField(EditContextFieldStatesFieldName, BindingFlags.Instance | BindingFlags.NonPublic) ??
-            throw new NotImplementedException(
-                $"{nameof(EditContext)} does not implement the {EditContextFieldStatesFieldName} field anymore.");
+    private static Exception DefaultExceptionFactoryImpl(IEditModelSubpathTrait.ErrorContext context) =>
+        context.Identifier switch {
+            IEditModelSubpathTrait.ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
+                $"{context.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter, but not both."),
+            _ => IEditModelSubpathTrait.DefaultExceptionFactory(context)
+        };
 
+    public static readonly Func<IEditModelSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
+
+    Func<IEditModelSubpathTrait.ErrorContext, Exception> IEditModelSubpathTrait.ExceptionFactory => DefaultExceptionFactory;
+
+    private EditContext? ActorEditContextSentinel => field ??= new EditContext(s_modelSentinel);
     private Dictionary<ModelIdentifier, FieldIdentifier>? _subModelAccessPathMap;
     private ModelIdentifier _ancestorEditContextModelIdentifier;
+    private bool _useEditContextSentinel;
+    private IEditModelValidationNotifier? _editModelValidationNotifier;
 
     [CascadingParameter]
-    private IComponentValidationNotifier? RoutesOwningComponentValidationNotifier { get; set; }
+    private IEditModelValidationNotifier? RoutesOwningEditModelValidationNotifier { get; set; }
+
+    [field: AllowNull]
+    [field: MaybeNull]
+    private AncestorEditContextValidatdionNotifier AncestorEditContextValidationNotifier =>
+        field ??= new AncestorEditContextValidatdionNotifier(this);
 
     [Parameter]
-    [EditorRequired]
-    public Expression<Func<object>>[]? Routes { get; set; }
+#pragma warning disable BL0007 // Component parameters should be auto properties
+    public object? Model {
+#pragma warning restore BL0007 // Component parameters should be auto properties
+        get => ((IEditModelSubpathTrait)this).Model;
+        set => ((IEditModelSubpathTrait)this).Model = value;
+    }
 
-    EditContext? IEditContextualComponentTrait.ActorEditContext { get; } = new(s_modelSentinel);
+    [Parameter]
+#pragma warning disable BL0007 // Component parameters should be auto properties
+    public EditContext? EditContext {
+#pragma warning restore BL0007 // Component parameters should be auto properties
+        get => ((IEditModelSubpathTrait)this).ActorEditContext;
+        set => ((IEditModelSubpathTrait)this).SetActorEditContextExplicitly(value);
+    }
+
+    bool IEditModelSubpathTrait.HasActorEditContextBeenSetExplicitly { get; set; }
+    object? IEditModelSubpathTrait.Model { get; set; }
+    EditContext? IEditModelSubpathTrait.ActorEditContext { get; set; }
+
+    EditContext? IEditContextualComponentTrait.ActorEditContext =>
+        ((IEditModelSubpathTrait)this).ActorEditContext ?? ActorEditContextSentinel;
+
+    bool IEditModelSubpathTrait.IsActorEditContextComposable {
+        set => _useEditContextSentinel = value;
+    }
+
+    [Parameter]
+    public Expression<Func<object>>[]? Routes { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
-        if (RoutesOwningComponentValidationNotifier is null) {
-            throw new InvalidOperationException(
-                $"{GetType().Name} requires a non-null cascading parameter of type {typeof(IComponentValidationNotifier)}, internally provided by e.g. {nameof(EditModelValidatorRootpath)} or {nameof(EditModelValidatorSubpath)}.");
-        }
-
-        if (Routes is null) {
-            throw new InvalidOperationException($"{GetType().Name} requires a {nameof(Routes)} parameter.");
-        }
-
+        await ((IEditModelSubpathTrait)this).OnSubpathParametersSetAsync();
         await base.OnParametersSetAsync();
     }
 
@@ -115,11 +155,11 @@ public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelVal
     {
         await base.OnParametersTransitioningAsync();
 
-        Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
-
-        if (!RoutesOwningComponentValidationNotifier.IsInScope(LastParametersTransition.RootEditContextTransition.New)) {
-            throw new InvalidOperationException(
-                $"{GetType().Name} has a cascading parameter of type {nameof(IComponentValidationNotifier)}, but the cascaded component validation notifier operates in a different scope than this component.");
+        if (RoutesOwningEditModelValidationNotifier is { } validationNotifier &&
+            validationNotifier.IsInScope(LastParametersTransition.RootEditContextTransition.New)) {
+            _editModelValidationNotifier = RoutesOwningEditModelValidationNotifier;
+        } else {
+            _editModelValidationNotifier = AncestorEditContextValidationNotifier;
         }
 
         InitializeModelRoutes();
@@ -139,8 +179,11 @@ public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelVal
                 nestedModelRoutes.Clear();
             }
 
-            Debug.Assert(Routes is not null);
-            foreach (var route in Routes) {
+            if (Routes is not { } routes) {
+                return;
+            }
+
+            foreach (var route in routes) {
                 var modelIdentifier = ModelIdentifier.Create(route);
                 var modelRoute = FieldIdentifierExtension.WithPropertyPath(route);
                 if (!nestedModelRoutes.TryAdd(modelIdentifier, modelRoute)) {
@@ -154,27 +197,22 @@ public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelVal
     protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
-        var componentValidator = RoutesOwningComponentValidationNotifier;
-        var validationRequestedArgs = new EditModelValidatorModelValidationRequestedArgs(sender, sender);
-        componentValidator.NotifyModelValidationRequested(validationRequestedArgs);
+        Debug.Assert(_editModelValidationNotifier is not null);
+        var validationRequestedArgs = new EditModelModelValidationRequestedArgs(sender, sender);
+        _editModelValidationNotifier.NotifyModelValidationRequested(validationRequestedArgs);
     }
 
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
-        var componentValidator = RoutesOwningComponentValidationNotifier;
+        Debug.Assert(_editModelValidationNotifier is not null);
 
         // Scenario 1: Given () => City.Address.Street, then Model = Address and FieldName = "Street" 
         var subFieldIdentifier = e.FieldIdentifier;
         var subFieldModelIdentifier = new ModelIdentifier(subFieldIdentifier.Model);
         if (subFieldModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
-            var directFieldValidationRequestArgs = new EditModelValidatorDirectFieldValidationRequestedArgs(
-                this,
-                sender,
-                subFieldIdentifier);
-            componentValidator.NotifyDirectFieldValidationRequested(directFieldValidationRequestArgs);
+            var directFieldValidationRequestArgs = new EditModelDirectFieldValidationRequestedArgs(this, sender, subFieldIdentifier);
+            _editModelValidationNotifier.NotifyDirectFieldValidationRequested(directFieldValidationRequestArgs);
             goto notifyValidationStateChanged;
         }
 
@@ -190,14 +228,29 @@ public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelVal
         var fullFieldPathString = $"{subModelAccessPath.FieldName}.{subFieldIdentifier.FieldName}";
         // Scenario 1: Build a FieldIdentifier with City as the Model and City.Address.Street as the FieldName
         var fullFieldPath = new FieldIdentifier(subModelAccessPath.Model, fullFieldPathString);
-        var nestedFieldValidationRequestedArgs = new EditModelValidatorNestedFieldValidationRequestedArgs(
+        var nestedFieldValidationRequestedArgs = new EditModelNestedFieldValidationRequestedArgs(
             this,
             sender,
             fullFieldPath,
             subFieldIdentifier);
-        componentValidator.NotifyNestedFieldValidationRequested(nestedFieldValidationRequestedArgs);
+        _editModelValidationNotifier.NotifyNestedFieldValidationRequested(nestedFieldValidationRequestedArgs);
 
         notifyValidationStateChanged:
         LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
+    }
+
+    private class AncestorEditContextValidatdionNotifier(EditModelSubpath component) : IEditModelValidationNotifier
+    {
+        public bool IsInScope(EditContext candidate) => true;
+
+        public void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args) =>
+            component.LastParametersTransition.AncestorEditContextTransition.New.Validate();
+
+        public void NotifyDirectFieldValidationRequested(EditModelDirectFieldValidationRequestedArgs args) =>
+            component.LastParametersTransition.AncestorEditContextTransition.New.NotifyFieldChanged(args.FieldIdentifier);
+
+        public void NotifyNestedFieldValidationRequested(EditModelNestedFieldValidationRequestedArgs args) =>
+            // Align with default behavior: delegate to ancestor edit context and its validators, which may throw an exception.
+            component.LastParametersTransition.AncestorEditContextTransition.New.NotifyFieldChanged(args.SubFieldIdentifier);
     }
 }

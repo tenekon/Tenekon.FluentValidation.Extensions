@@ -54,9 +54,9 @@ flowchart TD
         Stop2(("Throw error"))
         n3["Continue component initialization"]
   end
- subgraph s7["EditModelValidatorRoutes"]
+ subgraph s7["EditModelSubpath"]
         StartRoutes[["Cascaded IEditModelValidator from Rootpath or Subpath ancestor"]]
-        RoutesComponent["EditModelValidatorRoutes"]
+        RoutesComponent["EditModelSubpath"]
         RoutesComponentActor["Always provide ActorEditContext via model sentinel"]
   end
  subgraph componentValdatorBase["EditModelValidatorBase"]
@@ -150,7 +150,7 @@ config:
   look: classic
 ---
 flowchart TD
- subgraph s8["EditModelValidatorRoutes Event Handling"]
+ subgraph s8["EditModelSubpath Event Handling"]
         n16["OnValidationRequested (RootEditContext)"]
         n17@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event won't delegate model validation request to \nIEditModelValidator; the model validation request become a no-op.</span>" }
         n18["OnFieldChanged (ActorEditContext)"]

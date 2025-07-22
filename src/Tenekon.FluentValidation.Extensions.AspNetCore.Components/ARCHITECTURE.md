@@ -77,7 +77,7 @@ My proposal is a more modular approach, where you plug'n'play validators to your
 
 1. `EditModelValidatorRootpath`
 2. `EditModelValidatorSubpath`
-3. `EditModelValidatorRoutes`
+3. `EditModelSubpath`
 
 each having its own characteristicas.
 
@@ -117,7 +117,7 @@ each having its own characteristicas.
   - A. to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
   - B. to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context, if root edit context and actor edit context are not reference equal.
 
-**`EditModelValidatorRoutes`**
+**`EditModelSubpath`**
 
 - A. It expects an ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example `EditForm` or `CascadedValue` with an instance of `EditContext`.
 

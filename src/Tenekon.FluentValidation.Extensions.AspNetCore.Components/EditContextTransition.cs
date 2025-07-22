@@ -21,7 +21,6 @@ internal sealed class EditContextTransition
         get;
         set {
             InvalidateCache();
-            Revisioner?.IncrementRevision();
             field = value;
         }
     }
@@ -40,7 +39,6 @@ internal sealed class EditContextTransition
         get => _new ?? throw new InvalidOperationException("Member is null although it is a required member.");
         set {
             InvalidateCache();
-            Revisioner?.IncrementRevision();
             _new = value;
         }
     }
@@ -77,5 +75,6 @@ internal sealed class EditContextTransition
     {
         _isOldReferenceEqualsToNew = null;
         _isOldReferenceDifferentToNew = null;
+        Revisioner?.IncrementRevision();
     }
 }

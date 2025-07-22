@@ -1,6 +1,6 @@
 # 📘 Validator Components Cookbook [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
-A practical guide to using `EditModelValidatorRootpath`, `EditModelValidatorSubpath`, and `EditModelValidatorRoutes` components in `Tenekon.FluentValidation.Extensions.AspNetCore.Components`.
+A practical guide to using `EditModelValidatorRootpath`, `EditModelValidatorSubpath`, and `EditModelSubpath` components in `Tenekon.FluentValidation.Extensions.AspNetCore.Components`.
 
 <!-- omit from toc -->
 ## Table of Contents
@@ -169,7 +169,7 @@ Combine scoped submodel validation with route awareness (e.g. wizard sections).
 <!-- omit from toc -->
 ### ⚖️ Notes
 
-* Do **not** use `<EditModelValidatorRoutes>` here — only pass `Routes` as a parameter
+* Do **not** use `<EditModelSubpath>` here — only pass `Routes` as a parameter
 * Use only for nested complex objects
 
 ---
@@ -178,17 +178,17 @@ Combine scoped submodel validation with route awareness (e.g. wizard sections).
 
 ### 🧠 When to use
 
-Use when you want to decouple routing logic into a `<EditModelValidatorRoutes></EditModelValidatorRoutes>` block.
+Use when you want to decouple routing logic into a `<EditModelSubpath></EditModelSubpath>` block.
 
 ### ✨ Example
 
 ```razor
 <EditForm Model="Model">
     <EditModelValidatorRootpath ValidatorType="typeof(MyValidator)">
-        <EditModelValidatorRoutes Routes="[() => Model.PartA, () => Model.PartB]">
+        <EditModelSubpath Routes="[() => Model.PartA, () => Model.PartB]">
             <InputText @bind-Value="Model.PartA.SomeText" />
             <InputNumber @bind-Value="Model.PartB.SomeNumber" />
-        </EditModelValidatorRoutes>
+        </EditModelSubpath>
     </EditModelValidatorRootpath>
 </EditForm>
 ```
@@ -196,7 +196,7 @@ Use when you want to decouple routing logic into a `<EditModelValidatorRoutes></
 <!-- omit from toc -->
 ### ⚖️ Notes
 
-* `<EditModelValidatorRoutes>` must not be self-closing
+* `<EditModelSubpath>` must not be self-closing
 * Used for manual routing control
 * Each block scopes its own validation context
 
@@ -206,7 +206,7 @@ Use when you want to decouple routing logic into a `<EditModelValidatorRoutes></
 
 ### 🧠 When to use
 
-Use to nest `EditModelValidatorRoutes` manually inside a scoped submodel validator.
+Use to nest `EditModelSubpath` manually inside a scoped submodel validator.
 
 ### ✨ Example
 
@@ -215,10 +215,10 @@ Use to nest `EditModelValidatorRoutes` manually inside a scoped submodel validat
     @{
         var step = Model.Step;
         <EditModelValidatorSubpath Model="step" ValidatorType="typeof(StepValidator)">
-            <EditModelValidatorRoutes Routes="[() => step.PartA, () => step.PartB]">
+            <EditModelSubpath Routes="[() => step.PartA, () => step.PartB]">
                 <InputText @bind-Value="step.PartA.SomeText" />
                 <InputNumber @bind-Value="step.PartB.SomeNumber" />
-            </EditModelValidatorRoutes>
+            </EditModelSubpath>
         </EditModelValidatorSubpath>
     }
 </EditForm>
@@ -227,7 +227,7 @@ Use to nest `EditModelValidatorRoutes` manually inside a scoped submodel validat
 <!-- omit from toc -->
 ### ⚖️ Notes
 
-* `<EditModelValidatorRoutes>` must not be self-closing
+* `<EditModelSubpath>` must not be self-closing
 * Enables flexible validation of deep models
 * Keep route expressions targeting complex types only
 

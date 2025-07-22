@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public interface IEditModelValidatorSubpathTrait
+public interface IEditModelSubpathTrait
 {
     public static readonly Func<ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
 
@@ -11,8 +11,6 @@ public interface IEditModelValidatorSubpathTrait
         errorContext.Identifier switch {
             ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
                 $"{errorContext.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} property or a non-null {nameof(ActorEditContext)} property, but not both."),
-            ErrorIdentifier.NoActorEditContextAndNoModel => new InvalidOperationException(
-                $"{errorContext.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} property or a non-null {nameof(ActorEditContext)} property."),
             _ => throw new InvalidOperationException($"Unknown error identifier: {errorContext.Identifier}")
         };
 
@@ -26,6 +24,8 @@ public interface IEditModelValidatorSubpathTrait
 
     EditContext? ActorEditContext { get; set; }
     object? Model { get; set; }
+    
+    bool IsActorEditContextComposable { set; }
 
     /// <summary>
     /// Sets <see cref="ActorEditContext"/> to <paramref name="editContext"/>.
@@ -45,10 +45,10 @@ public interface IEditModelValidatorSubpathTrait
             throw ExceptionFactory(new ErrorContext(this, ErrorIdentifier.ActorEditContextAndModel));
         }
 
-        // TODO: Support ActorEditContext = new EditContext(AncestorEditContext.Model)
         if (!HasActorEditContextBeenSetExplicitly && Model is null) {
             // We have no ActorEditContext and no Model
-            throw ExceptionFactory(new ErrorContext(this, ErrorIdentifier.NoActorEditContextAndNoModel));
+            IsActorEditContextComposable = false;
+            return Task.CompletedTask;
         }
 
         // Re-assign only if Model is not null and either ActorEditContext is null or Model differs from ActorEditContext.Model,
@@ -68,7 +68,6 @@ public interface IEditModelValidatorSubpathTrait
 
     public enum ErrorIdentifier
     {
-        ActorEditContextAndModel,
-        NoActorEditContextAndNoModel
+        ActorEditContextAndModel
     }
 }

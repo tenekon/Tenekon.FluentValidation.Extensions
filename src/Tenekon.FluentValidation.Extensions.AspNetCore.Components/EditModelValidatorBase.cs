@@ -12,13 +12,13 @@ using Microsoft.Extensions.Logging;
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public abstract class EditModelValidatorBase : EditContextualComponentBase<EditModelValidatorBase>, IEditModelValidator,
-    IComponentValidationNotifier, IHandlingParametersTransition
+    IEditModelValidationNotifier, IHandlingParametersTransition
 {
     static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
 
     private readonly RenderFragment _renderEditModelValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
-    private readonly RenderFragment<RenderFragment?> _renderEditModelValidatorRoutesFragment;
+    private readonly RenderFragment<RenderFragment?> _renderEditModelSubpathFragment;
     private readonly Action<ValidationStrategy<object>> _applyValidationStrategyAction;
     private bool _havingValidatorSetExplicitly;
     private IValidator? _validator;
@@ -31,7 +31,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
     {
         _renderEditModelValidatorContent = RenderEditModelValidatorContent;
         _renderEditContextualComponentFragment = childContent => builder => RenderEditContextualComponent(builder, childContent);
-        _renderEditModelValidatorRoutesFragment = childContent => builder => RenderEditModelValidatorRoutes(builder, childContent);
+        _renderEditModelSubpathFragment = childContent => builder => RenderEditModelSubpath(builder, childContent);
         _applyValidationStrategyAction = ApplyValidationStrategy;
     }
 
@@ -85,10 +85,10 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
     [Parameter]
     public Expression<Func<object>>[]? Routes { get; set; }
 
-    private void RenderEditModelValidatorRoutes(RenderTreeBuilder builder, RenderFragment? childContent)
+    private void RenderEditModelSubpath(RenderTreeBuilder builder, RenderFragment? childContent)
     {
-        builder.OpenComponent<EditModelValidatorRoutes>(sequence: 0);
-        builder.AddComponentParameter(sequence: 1, nameof(EditModelValidatorRoutes.Routes), Routes);
+        builder.OpenComponent<EditModelSubpath>(sequence: 0);
+        builder.AddComponentParameter(sequence: 1, nameof(EditModelSubpath.Routes), Routes);
         builder.AddComponentParameter(sequence: 2, nameof(ChildContent), childContent);
         builder.CloseComponent();
     }
@@ -96,7 +96,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
     private void RenderEditModelValidatorContent(RenderTreeBuilder builder)
     {
         if (Routes is not null) {
-            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelValidatorRoutesFragment(ChildContent));
+            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelSubpathFragment(ChildContent));
         } else {
             builder.AddContent(sequence: 1, _renderEditContextualComponentFragment, ChildContent);
         }
@@ -104,7 +104,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
 
     private void RenderEditModelValidator(RenderTreeBuilder builder, RenderFragment childContent)
     {
-        builder.OpenComponent<CascadingValue<IComponentValidationNotifier>>(sequence: 0);
+        builder.OpenComponent<CascadingValue<IEditModelValidationNotifier>>(sequence: 0);
         builder.AddComponentParameter(sequence: 1, "IsFixed", value: true);
         builder.AddComponentParameter(sequence: 2, "Value", this);
         builder.AddComponentParameter(sequence: 3, nameof(CascadingValue<>.ChildContent), childContent);
@@ -153,7 +153,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
 
     internal override async Task OnParametersTransitioningAsync() => await base.OnParametersTransitioningAsync();
 
-    bool IComponentValidationNotifier.IsInScope(EditContext candidate) =>
+    bool IEditModelValidationNotifier.IsInScope(EditContext candidate) =>
         (LastParametersTransition.RootEditContextTransition.TryGetNew(out var rootEditContext) &&
             ReferenceEquals(rootEditContext, candidate)) ||
         (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(candidate, out var candidateRootEditContext) &&
@@ -202,12 +202,12 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
 
     protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
 
-    protected virtual void NotifyModelValidationRequested(EditModelValidatorModelValidationRequestedArgs args)
+    protected virtual void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args)
     {
-        // A. Whenever an actor edit context of a direct descendant of EditModelValidatorRoutes fires OnValidationRequested,
+        // A. Whenever an actor edit context of a direct descendant of EditModelSubpath fires OnValidationRequested,
         //    it bubbles up to the root edit context, triggering OnValidateModel(object? sender, ValidationRequestedEventArgs args)
         //    and implicitly ValidateModel() of any validator component associated with the root edit context,
-        //    except EditModelValidatorRoutes. This is because they do not subscribe to OnValidationRequested of the root edit context
+        //    except EditModelSubpath. This is because they do not subscribe to OnValidationRequested of the root edit context
         //    to avoid a second invocation of ValidateModel().
         // An additional safety net: To prevent a potential second invocation of ValidateModel(), we return early if the original source of
         // the event is reference-equal to the root edit context, since that instance already handles OnValidationRequested for
@@ -219,7 +219,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
         ValidateModel();
     }
 
-    void IComponentValidationNotifier.NotifyModelValidationRequested(EditModelValidatorModelValidationRequestedArgs args) =>
+    void IEditModelValidationNotifier.NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args) =>
         NotifyModelValidationRequested(args);
 
     void IEditModelValidator.Validate() => ValidateModel();
@@ -232,7 +232,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
             return _validator.Validate(validationContext);
         } catch (InvalidOperationException error) {
             throw new EditModelValidationException(
-                $"{error.Message} Consider to make use of {nameof(EditModelValidatorSubpath)}, {nameof(EditModelValidatorRoutes)} or similiar.",
+                $"{error.Message} Consider to make use of {nameof(EditModelValidatorSubpath)}, {nameof(EditModelSubpath)} or similiar.",
                 error);
         }
     }
@@ -271,7 +271,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
         }
     }
 
-    void IComponentValidationNotifier.NotifyDirectFieldValidationRequested(EditModelValidatorDirectFieldValidationRequestedArgs args) =>
+    void IEditModelValidationNotifier.NotifyDirectFieldValidationRequested(EditModelDirectFieldValidationRequestedArgs args) =>
         ValidateDirectField(args.FieldIdentifier);
 
     void IEditModelValidator.ValidateDirectField(FieldIdentifier fieldIdentifier) => ValidateDirectField(fieldIdentifier);
@@ -311,7 +311,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
 
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
 
-    void IComponentValidationNotifier.NotifyNestedFieldValidationRequested(EditModelValidatorNestedFieldValidationRequestedArgs args) =>
+    void IEditModelValidationNotifier.NotifyNestedFieldValidationRequested(EditModelNestedFieldValidationRequestedArgs args) =>
         ValidateNestedField(args.FullFieldPath, args.SubFieldIdentifier);
 
     void IEditModelValidator.ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier) =>
