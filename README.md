@@ -34,12 +34,14 @@ library enhances component-level validation in Blazor applications using FluentV
 ### Features
 
 - :sun_with_face: **Seamless integration with Blazor forms**<sup>1</sup>
-- :electric_plug: **Component-level validation** — plug component validators<sup>2</sup> into forms or any part of a form, even deeply nested components<sup>3</sup>.
+- :jigsaw: **Any model part becomes validatable** – just wrap it by a component validator<sup>4</sup>
 - :jigsaw: **Nestable component validators** – deep child component validators<sup>2</sup> still hook into the validation of the main form<sup>3</sup>.
+- :electric_plug: **Component-level validation** — plug component validators<sup>2</sup> into forms or any part of a form, even deeply nested components<sup>3</sup>.
 
 <small><sup>1</sup>: Any form that provides a cascaded `EditContext`, even a plain `CascadedValue Value="new EditContext(..)">..</CascadedValue>` is sufficient.</small><br/>
 <small><sup>2</sup>: Refers to the usage of validator components of this library.</small><br/>
-<small><sup>3</sup>: Nested child component validators automatically receive the nearest `EditContext`, captured by the first validator component<sup>2</sup> higher in the hierarchy (usually from a form<sup>1</sup>).</small>
+<small><sup>3</sup>: Nested child component validators automatically receive the nearest `EditContext`, captured by the first validator component<sup>2</sup> higher in the hierarchy (usually from a form<sup>1</sup>).</small><br/>
+<small><sup>4</sup>: ComponentValidatorSubpath has the capability to create a scoped `EditContxt` wired to the nearest `EditContext`<sup>3</sup>.
 
 ### Quickstart
 
