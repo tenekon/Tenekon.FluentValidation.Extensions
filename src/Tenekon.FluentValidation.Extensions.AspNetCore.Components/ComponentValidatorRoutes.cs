@@ -89,7 +89,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
     private ModelIdentifier _ancestorEditContextModelIdentifier;
 
     [CascadingParameter]
-    private IComponentValidator? RoutesOwningComponentValidator { get; set; }
+    private IComponentValidationNotifier? RoutesOwningComponentValidationNotifier { get; set; }
 
     [Parameter]
     [EditorRequired]
@@ -99,9 +99,9 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
     protected override async Task OnParametersSetAsync()
     {
-        if (RoutesOwningComponentValidator is null) {
+        if (RoutesOwningComponentValidationNotifier is null) {
             throw new InvalidOperationException(
-                $"{GetType().Name} requires a non-null cascading parameter of type {typeof(IComponentValidator)}, internally provided by e.g. {nameof(ComponentValidatorRootpath)} or {nameof(ComponentValidatorSubpath)}.");
+                $"{GetType().Name} requires a non-null cascading parameter of type {typeof(IComponentValidationNotifier)}, internally provided by e.g. {nameof(ComponentValidatorRootpath)} or {nameof(ComponentValidatorSubpath)}.");
         }
 
         if (Routes is null) {
@@ -115,11 +115,11 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
     {
         await base.OnParametersTransitioningAsync();
 
-        Debug.Assert(RoutesOwningComponentValidator is not null);
+        Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
 
-        if (!RoutesOwningComponentValidator.IsInScope(LastParametersTransition.RootEditContextTransition.New)) {
+        if (!RoutesOwningComponentValidationNotifier.IsInScope(LastParametersTransition.RootEditContextTransition.New)) {
             throw new InvalidOperationException(
-                $"{GetType().Name} has a cascading parameter of type {typeof(IComponentValidator)}, but the cascaded component validator operates in a different scope than this component.");
+                $"{GetType().Name} has a cascading parameter of type {nameof(IComponentValidationNotifier)}, but the cascaded component validation notifier operates in a different scope than this component.");
         }
 
         InitializeModelRoutes();
@@ -154,8 +154,8 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
     protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        Debug.Assert(RoutesOwningComponentValidator is not null);
-        var componentValidator = RoutesOwningComponentValidator;
+        Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
+        var componentValidator = RoutesOwningComponentValidationNotifier;
         var validationRequestedArgs = new ComponentValidatorModelValidationRequestedArgs(sender, sender);
         componentValidator.NotifyModelValidationRequested(validationRequestedArgs);
     }
@@ -163,8 +163,8 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        Debug.Assert(RoutesOwningComponentValidator is not null);
-        var componentValidator = RoutesOwningComponentValidator;
+        Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
+        var componentValidator = RoutesOwningComponentValidationNotifier;
 
         // Scenario 1: Given () => City.Address.Street, then Model is Address and Street is FieldName 
         var directFieldIdentifier = e.FieldIdentifier;

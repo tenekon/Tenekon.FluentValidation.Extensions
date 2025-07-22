@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 public abstract class ComponentValidatorBase : EditContextualComponentBase<ComponentValidatorBase>, IComponentValidator,
-    IHandlingParametersTransition
+    IComponentValidationNotifier, IHandlingParametersTransition
 {
     static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
 
@@ -104,7 +104,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     private void RenderComponentValidator(RenderTreeBuilder builder, RenderFragment childContent)
     {
-        builder.OpenComponent<CascadingValue<IComponentValidator>>(sequence: 0);
+        builder.OpenComponent<CascadingValue<IComponentValidationNotifier>>(sequence: 0);
         builder.AddComponentParameter(sequence: 1, "IsFixed", value: true);
         builder.AddComponentParameter(sequence: 2, "Value", this);
         builder.AddComponentParameter(sequence: 3, nameof(CascadingValue<>.ChildContent), childContent);
@@ -153,7 +153,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     internal override async Task OnParametersTransitioningAsync() => await base.OnParametersTransitioningAsync();
 
-    bool IComponentValidator.IsInScope(EditContext candidate) =>
+    bool IComponentValidationNotifier.IsInScope(EditContext candidate) =>
         (LastParametersTransition.RootEditContextTransition.TryGetNew(out var rootEditContext) &&
             ReferenceEquals(rootEditContext, candidate)) ||
         (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(candidate, out var candidateRootEditContext) &&
@@ -175,6 +175,8 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         // if actor edit context == ancestor edit context == root edit context 
         _actorEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
     }
+
+    void IComponentValidator.ValidateFullModel() => LastParametersTransition.RootEditContextTransition.New.Validate();
 
     private void ValidateModel()
     {
@@ -217,8 +219,10 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         ValidateModel();
     }
 
-    void IComponentValidator.NotifyModelValidationRequested(ComponentValidatorModelValidationRequestedArgs args) =>
+    void IComponentValidationNotifier.NotifyModelValidationRequested(ComponentValidatorModelValidationRequestedArgs args) =>
         NotifyModelValidationRequested(args);
+
+    void IComponentValidator.Validate() => ValidateModel();
 
     // TODO: Removable?
     private ValidationResult Validate(ValidationContext<object> validationContext)
@@ -267,8 +271,10 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         }
     }
 
-    void IComponentValidator.NotifyDirectFieldValidationRequested(ComponentValidatorDirectFieldValidationRequestedArgs args) =>
+    void IComponentValidationNotifier.NotifyDirectFieldValidationRequested(ComponentValidatorDirectFieldValidationRequestedArgs args) =>
         ValidateDirectField(args.FieldIdentifier);
+
+    void IComponentValidator.ValidateDirectField(FieldIdentifier fieldIdentifier) => ValidateDirectField(fieldIdentifier);
 
     private void ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier)
     {
@@ -305,8 +311,11 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
 
-    void IComponentValidator.NotifyNestedFieldValidationRequested(ComponentValidatorNestedFieldValidationRequestedArgs args) =>
+    void IComponentValidationNotifier.NotifyNestedFieldValidationRequested(ComponentValidatorNestedFieldValidationRequestedArgs args) =>
         ValidateNestedField(args.DirectFieldIdentifier, args.NestedFieldIdentifier);
+
+    void IComponentValidator.ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier) =>
+        ValidateNestedField(directFieldIdentifier, nestedFieldIdentifier);
 
     protected override void BuildRenderTree(RenderTreeBuilder builder) =>
         RenderComponentValidator(builder, _renderComponentValidatorContent);

@@ -1,0 +1,11 @@
+﻿using Microsoft.AspNetCore.Components.Forms;
+
+namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
+
+internal interface IComponentValidationNotifier
+{
+    bool IsInScope(EditContext candidate);
+    void NotifyModelValidationRequested(ComponentValidatorModelValidationRequestedArgs args);
+    void NotifyDirectFieldValidationRequested(ComponentValidatorDirectFieldValidationRequestedArgs args);
+    void NotifyNestedFieldValidationRequested(ComponentValidatorNestedFieldValidationRequestedArgs args);
+}

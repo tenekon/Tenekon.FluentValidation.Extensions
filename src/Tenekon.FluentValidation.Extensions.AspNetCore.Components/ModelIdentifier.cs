@@ -23,7 +23,6 @@ public readonly struct ModelIdentifier : IEquatable<ModelIdentifier>
 
     /// <summary>Initializes a new instance of the <see cref="ModelIdentifier" /> structure.</summary>
     /// <param name="model">The object that owns the field.</param>
-    /// <param name="fieldName">The name of the editable field.</param>
     public ModelIdentifier(object model)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -92,4 +91,8 @@ public readonly struct ModelIdentifier : IEquatable<ModelIdentifier>
                     $"The provided expression contains a {accessorBody.GetType().Name} which is not supported. {nameof(ModelIdentifier)} only supports simple member accessors (fields, properties) of an object.");
         }
     }
+
+    public static bool operator ==(ModelIdentifier left, ModelIdentifier right) => left.Equals(right);
+
+    public static bool operator !=(ModelIdentifier left, ModelIdentifier right) => !left.Equals(right);
 }
