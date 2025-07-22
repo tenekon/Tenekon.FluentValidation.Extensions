@@ -121,7 +121,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         //     _leafComponentValidatorContext;
     }
 
-    private async Task ConfigureOnParametersSetAsync()
+    protected override async Task OnParametersSetAsync()
     {
         var serviceScopeSource = new ServiceScopeSource(ServiceProvider);
 
@@ -147,18 +147,17 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             Debug.Assert(Validator is not null);
             _validator = Validator;
         }
-    }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        await ConfigureOnParametersSetAsync();
         await base.OnParametersSetAsync();
     }
 
-    bool IComponentValidator.IsInScope(EditContext editContext) =>
-        ReferenceEquals(editContext, _rootEditContext) ||
-        (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(editContext, out var rootEditContext) &&
-            ReferenceEquals(rootEditContext, _rootEditContext));
+    internal override async Task OnParametersTransitioningAsync() => await base.OnParametersTransitioningAsync();
+
+    bool IComponentValidator.IsInScope(EditContext candidate) =>
+        (LastParametersTransition.RootEditContextTransition.TryGetNew(out var rootEditContext) &&
+            ReferenceEquals(rootEditContext, candidate)) ||
+        (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(candidate, out var candidateRootEditContext) &&
+            ReferenceEquals(rootEditContext, candidateRootEditContext));
 
     private void ClearValidationMessageStores()
     {
@@ -180,9 +179,9 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     private void ValidateModel()
     {
         Debug.Assert(_validator is not null);
-        Debug.Assert(_actorEditContext is not null);
+        var actorEditContext = LastParametersTransition.ActorEditContextTransition.New;
 
-        var validationContext = ValidationContext<object>.CreateWithOptions(_actorEditContext.Model, _applyValidationStrategyAction);
+        var validationContext = ValidationContext<object>.CreateWithOptions(actorEditContext.Model, _applyValidationStrategyAction);
         ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
         var validationResult = _validator.Validate(validationContext);
 
@@ -192,11 +191,11 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
                 continue;
             }
 
-            var fieldIdentifier = FieldIdentifierHelper.DeriveFieldIdentifier(_actorEditContext.Model, error.PropertyName);
+            var fieldIdentifier = FieldIdentifierHelper.DeriveFieldIdentifier(actorEditContext.Model, error.PropertyName);
             AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
         }
 
-        _actorEditContext.NotifyValidationStateChanged();
+        actorEditContext.NotifyValidationStateChanged();
     }
 
     protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
@@ -211,7 +210,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         // An additional safety net: To prevent a potential second invocation of ValidateModel(), we return early if the original source of
         // the event is reference-equal to the root edit context, since that instance already handles OnValidationRequested for
         // the root edit context.
-        if (ReferenceEquals(_rootEditContext, args.OriginalSource)) {
+        if (ReferenceEquals(LastParametersTransition.RootEditContextTransition.NewOrNull, args.OriginalSource)) {
             return;
         }
 
@@ -236,7 +235,6 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     private void ValidateDirectField(FieldIdentifier fieldIdentifier)
     {
-        Debug.Assert(_actorEditContext is not null);
         Debug.Assert(_validator is not null);
 
         if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(fieldIdentifier.Model.GetType())) {
@@ -259,7 +257,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
         }
 
-        _actorEditContext.NotifyValidationStateChanged();
+        LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
         return;
 
         void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
@@ -275,7 +273,6 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     private void ValidateNestedField(FieldIdentifier directFieldIdentifier, FieldIdentifier nestedFieldIdentifier)
     {
         Debug.Assert(_validator is not null);
-        Debug.Assert(_actorEditContext is not null);
 
         if (SuppressInvalidatableFieldModels && !_validator.CanValidateInstancesOfType(nestedFieldIdentifier.Model.GetType())) {
             Logger?.LogWarning(
@@ -296,7 +293,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
             AddValidationMessageToStores(directFieldIdentifier, error.ErrorMessage);
         }
 
-        _actorEditContext.NotifyValidationStateChanged();
+        LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
         return;
 
         void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)

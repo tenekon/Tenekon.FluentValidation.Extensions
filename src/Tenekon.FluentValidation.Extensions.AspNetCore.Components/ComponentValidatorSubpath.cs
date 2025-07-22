@@ -45,18 +45,22 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     EditContext? IEditContextualComponentTrait.ActorEditContext =>
         ((IComponentValidatorSubpathTrait)this).ActorEditContext ?? throw new InvalidOperationException();
 
-    // ReSharper disable once MemberHidesInterfaceMemberWithDefaultImplementation
     protected override async Task OnParametersSetAsync()
     {
         await ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSetAsync();
+        await base.OnParametersSetAsync();
+    }
 
+    // ReSharper disable once MemberHidesInterfaceMemberWithDefaultImplementation
+    internal override async Task OnParametersTransitioningAsync()
+    {
         var actorEditContext = ((IComponentValidatorSubpathTrait)this).ActorEditContext;
         Debug.Assert(actorEditContext is not null);
         if (Validator is null && ValidatorType is null) {
             ValidatorType = typeof(IValidator<>).MakeGenericType(actorEditContext.Model.GetType());
         }
 
-        await base.OnParametersSetAsync();
+        await base.OnParametersTransitioningAsync();
     }
 
     /* TODO: Make pluggable */

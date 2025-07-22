@@ -9,6 +9,8 @@ internal sealed class EditContextTransition
     private bool? _isOldReferenceDifferentToNew;
     private EditContext? _new;
 
+    internal IRevisioner? Revisioner { get; set; }
+
     /// <summary>
     /// The previous edit context.
     /// </summary>
@@ -19,6 +21,7 @@ internal sealed class EditContextTransition
         get;
         set {
             InvalidateCache();
+            Revisioner?.IncrementRevision();
             field = value;
         }
     }
@@ -37,11 +40,27 @@ internal sealed class EditContextTransition
         get => _new ?? throw new InvalidOperationException("Member is null although it is a required member.");
         set {
             InvalidateCache();
+            Revisioner?.IncrementRevision();
             _new = value;
         }
     }
 
+    public EditContext? NewOrNull => _new;
+
+    [MemberNotNullWhen(returnValue: true, nameof(_new))]
     public bool IsNewNonNull => _new is not null;
+
+    public bool TryGetNew([NotNullWhen(returnValue: true)] out EditContext? editContext, bool invalidate = false)
+    {
+        if (!IsNewNonNull) {
+            editContext = null;
+            return false;
+        }
+
+        editContext = _new;
+        _new = null;
+        return true;
+    }
 
     /// <summary>
     /// Indicates that <see cref="Old"/> must be null, because it is the first ever occuring transition.

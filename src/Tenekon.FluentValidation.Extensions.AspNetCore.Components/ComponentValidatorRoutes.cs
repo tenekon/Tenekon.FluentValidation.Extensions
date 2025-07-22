@@ -42,8 +42,8 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
 
         static void CopyAncestorEditContextFieldReferencesToActorEditContext(ParametersTransition transition)
         {
-            var ancestor = transition.AncestorContextTransition;
-            var actor = transition.ActorContextTransition;
+            var ancestor = transition.AncestorEditContextTransition;
+            var actor = transition.ActorEditContextTransition;
 
             // We assume that actor edit context never changes only once at first transition.
 
@@ -109,18 +109,24 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         }
 
         await base.OnParametersSetAsync();
-        Debug.Assert(_rootEditContext is not null);
+    }
 
-        if (!RoutesOwningComponentValidator.IsInScope(_rootEditContext)) {
+    internal override async Task OnParametersTransitioningAsync()
+    {
+        await base.OnParametersTransitioningAsync();
+
+        Debug.Assert(RoutesOwningComponentValidator is not null);
+
+        if (!RoutesOwningComponentValidator.IsInScope(LastParametersTransition.RootEditContextTransition.New)) {
             throw new InvalidOperationException(
                 $"{GetType().Name} has a cascading parameter of type {typeof(IComponentValidator)}, but the cascaded component validator operates in a different scope than this component.");
         }
 
         InitializeModelRoutes();
 
-        Debug.Assert(_ancestorEditContext is not null);
-        if (_ancestorEditContextChangedSinceLastParametersSet) {
-            _ancestorEditContextModelIdentifier = new ModelIdentifier(_ancestorEditContext.Model);
+        var ancestorEditContextTransition = LastParametersTransition.AncestorEditContextTransition;
+        if (ancestorEditContextTransition.IsOldReferenceEqualsToNew) {
+            _ancestorEditContextModelIdentifier = new ModelIdentifier(ancestorEditContextTransition.New.Model);
         }
 
         return;
@@ -192,7 +198,6 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         componentValidator.NotifyNestedFieldValidationRequested(nestedFieldValidationRequestedArgs);
 
         notifyValidationStateChanged:
-        Debug.Assert(_actorEditContext is not null);
-        _actorEditContext.NotifyValidationStateChanged();
+        LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
     }
 }

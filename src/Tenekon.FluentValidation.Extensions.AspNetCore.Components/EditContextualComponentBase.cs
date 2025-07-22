@@ -31,7 +31,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         {
             var component = (EditContextualComponentBase<T>)transition.EditContextualComponentBase;
 
-            var root = transition.RootContextTransition;
+            var root = transition.RootEditContextTransition;
             if (root.IsOldReferenceDifferentToNew) {
                 component.DeinitializeRootValidationMessageStore();
                 component.DeinitializeRootEditContext();
@@ -40,56 +40,53 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
                     root.New.OnValidationRequested += component.OnValidateModel;
                     // TODO: Maybe we need to make it disable this in *Routes component
                     component._rootEditContextValidationMessageStore = new ValidationMessageStore(root.New);
-                    component._rootEditContext = root.New;
+                    // component._rootEditContext = root.New;
                 }
             }
 
-            var ancestor = transition.AncestorContextTransition;
+            var ancestor = transition.AncestorEditContextTransition;
             if (ancestor.IsOldReferenceDifferentToNew) {
                 component.DeinitializeAncestorEditContext();
 
                 if (ancestor.IsNewNonNull) {
-                    component._ancestorEditContext = ancestor.New;
+                    // component._ancestorEditContext = ancestor.New;
                 }
             }
 
-            var actor = transition.ActorContextTransition;
+            var actor = transition.ActorEditContextTransition;
             if (actor.IsOldReferenceDifferentToNew) {
                 component.DeinitializeActorEditContext();
 
                 if (actor.IsNewNonNull) {
                     actor.New.OnFieldChanged += component.OnValidateField;
-                    component._actorEditContext = actor.New;
+                    // component._actorEditContext = actor.New;
                 }
             }
 
             if (actor.IsOldReferenceDifferentToNew || root.IsOldReferenceDifferentToNew) {
                 component.DeinitializeActorEditContextValidationMessageStore();
 
-                if (actor.IsNewNonNull && root.IsNewNonNull) {
-                    var isNewActorReferenceDifferentToNewRoot = !ReferenceEquals(actor.New, root.New);
-                    if (isNewActorReferenceDifferentToNewRoot) {
-                        actor.New.OnValidationRequested += component.BubbleUpOnValidationRequested;
-                        // TODO: Maybe we need to make it disable this in *Routes component
-                        component._actorEditContextValidationMessageStore = new ValidationMessageStore(actor.New);
-                    }
+                if (transition.IsNewEditContextOfActorAndRootNonNullAndDifferent) {
+                    actor.New.OnValidationRequested += component.BubbleUpOnValidationRequested;
+                    // TODO: Maybe we need to make it disable this in *Routes component
+                    component._actorEditContextValidationMessageStore = new ValidationMessageStore(actor.New);
                 }
             }
         }
 
         static void UpdateActorEditContextPropertyOccupationOfRootEditContextLookupKey(ParametersTransition transition)
         {
-            if (transition.ActorContextTransition.IsOldReferenceDifferentToNew ||
-                transition.RootContextTransition.IsOldReferenceDifferentToNew) {
+            if (transition.ActorEditContextTransition.IsOldReferenceDifferentToNew ||
+                transition.RootEditContextTransition.IsOldReferenceDifferentToNew) {
                 // TODO: && IsFirstTransition: false?
-                if (transition.ActorContextTransition is { IsOldNonNull: true }) {
-                    RootEditContextPropertyAccessorHolder.s_accessor.DisoccupyProperty(transition.ActorContextTransition.Old);
+                if (transition.ActorEditContextTransition is { IsOldNonNull: true }) {
+                    RootEditContextPropertyAccessorHolder.s_accessor.DisoccupyProperty(transition.ActorEditContextTransition.Old);
                 }
 
-                if (transition.ActorContextTransition.IsNewNonNull && transition.RootContextTransition.IsNewNonNull) {
+                if (transition.ActorEditContextTransition.IsNewNonNull && transition.RootEditContextTransition.IsNewNonNull) {
                     RootEditContextPropertyAccessorHolder.s_accessor.OccupyProperty(
-                        transition.ActorContextTransition.New,
-                        transition.RootContextTransition.New);
+                        transition.ActorEditContextTransition.New,
+                        transition.RootEditContextTransition.New);
                 }
             }
         }
@@ -100,7 +97,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
     internal static Action<ParametersTransition> SubscribeToRootEditContextOnValidationRequestedAction { get; } = static transition => {
         var component = (EditContextualComponentBase<T>)transition.EditContextualComponentBase;
 
-        var root = transition.RootContextTransition;
+        var root = transition.RootEditContextTransition;
         if (root.IsOldReferenceDifferentToNew) {
             if (root.IsOldNonNull) {
                 root.Old.OnValidationRequested -= component.OnValidateModel;
@@ -114,18 +111,13 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
     private bool _didParametersTransitionedOnce;
 
-    internal bool _areActorEditContextAndAncestorEditContextEqual;
-    internal bool _areActorEditContextAndAncestorEditContextNotEqual;
-    internal EditContext? _actorEditContext;
-    internal EditContext? _ancestorEditContext;
-    internal bool _ancestorEditContextChangedSinceLastParametersSet;
-
-    internal EditContext? _rootEditContext;
     internal ValidationMessageStore? _rootEditContextValidationMessageStore;
     internal ValidationMessageStore? _actorEditContextValidationMessageStore;
 
+    internal ParametersTransition LastParametersTransition { get; private set; } = ParametersTransition.FirstRender;
+
     public EditContext ActorEditContext =>
-        _actorEditContext ?? throw new InvalidOperationException(
+        LastParametersTransition.ActorEditContextTransition.NewOrNull ?? throw new InvalidOperationException(
             $"The {nameof(ActorEditContext)} property hos not been yet initialized. Typically initialized the first time during component initialization.");
 
     [CascadingParameter]
@@ -136,7 +128,9 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
     EditContext? IEditContextualComponentTrait.ActorEditContext => null;
 
-    protected override Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => OnParametersTransitioningAsync();
+
+    internal virtual Task OnParametersTransitioningAsync()
     {
         /* We have three definitions of an edit context.
          * 1. The root edit context is the one originating from an edit form.
@@ -157,7 +151,6 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
         EditContext rootEditContext;
         var areActorEditContextAndAncestorEditContextEqual = ReferenceEquals(actorEditContext, ancestorEditContext);
-        var areActorEditContextAndAncestorEditContextNotEqual = !areActorEditContextAndAncestorEditContextEqual;
         if (areActorEditContextAndAncestorEditContextEqual) {
             rootEditContext = ancestorEditContext;
         } else {
@@ -173,18 +166,18 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
         var parametersTransition = new ParametersTransition {
             EditContextualComponentBase = this,
-            ActorContextTransition = new EditContextTransition {
-                Old = _actorEditContext,
+            ActorEditContextTransition = new EditContextTransition {
+                Old = LastParametersTransition.ActorEditContextTransition.NewOrNull,
                 New = actorEditContext,
                 IsFirstTransition = isFirstTransition
             },
-            AncestorContextTransition = new EditContextTransition {
-                Old = _ancestorEditContext,
+            AncestorEditContextTransition = new EditContextTransition {
+                Old = LastParametersTransition.AncestorEditContextTransition.NewOrNull,
                 New = ancestorEditContext,
                 IsFirstTransition = isFirstTransition
             },
-            RootContextTransition = new EditContextTransition {
-                Old = _rootEditContext,
+            RootEditContextTransition = new EditContextTransition {
+                Old = LastParametersTransition.RootEditContextTransition.NewOrNull,
                 New = rootEditContext,
                 IsFirstTransition = isFirstTransition
             }
@@ -194,11 +187,7 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
             registrationItem.Handler(parametersTransition);
         }
 
-        // TODO: Replace below lines by parameters transition API
-
-        _areActorEditContextAndAncestorEditContextEqual = areActorEditContextAndAncestorEditContextEqual;
-        _areActorEditContextAndAncestorEditContextNotEqual = areActorEditContextAndAncestorEditContextNotEqual;
-        _ancestorEditContextChangedSinceLastParametersSet = parametersTransition.AncestorContextTransition.IsOldReferenceEqualsToNew;
+        LastParametersTransition = parametersTransition;
         return Task.CompletedTask;
     }
 
@@ -210,30 +199,28 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
     {
     }
 
-    private void BubbleUpOnValidationRequested(object? sender, ValidationRequestedEventArgs e)
-    {
-        Debug.Assert(_rootEditContext is not null);
-        _rootEditContext.Validate();
-    }
+    private void BubbleUpOnValidationRequested(object? sender, ValidationRequestedEventArgs e) =>
+        LastParametersTransition.RootEditContextTransition.New.Validate();
 
     protected void RenderEditContextualComponent(RenderTreeBuilder builder, RenderFragment? childContent)
     {
+        var actorEditContext = LastParametersTransition.ActorEditContextTransition.NewOrNull;
+
         // Because OnParametersSetAsync is suspending before assigning _actorEditContext, premature rendering may occur.  
-        if (_actorEditContext is null) {
+        if (actorEditContext is null) {
             return;
         }
 
-        Debug.Assert(_actorEditContext is not null);
-        if (_areActorEditContextAndAncestorEditContextEqual) {
+        if (LastParametersTransition.IsNewEditContextOfActorAndAncestorNonNullAndSame) {
             builder.AddContent(sequence: 0, childContent);
             return;
         }
 
         builder.OpenComponent<CascadingValue<EditContext>>(sequence: 1);
         // Because edit context instances can stay constant but its model not, we have to set a unique component identity 
-        builder.SetKey(new EditContextIdentitySnapshot(_actorEditContext, _actorEditContext.Model));
+        builder.SetKey(new EditContextIdentitySnapshot(actorEditContext, actorEditContext.Model));
         builder.AddComponentParameter(sequence: 2, "IsFixed", value: true);
-        builder.AddComponentParameter(sequence: 3, "Value", _actorEditContext);
+        builder.AddComponentParameter(sequence: 3, "Value", actorEditContext);
         builder.AddComponentParameter(sequence: 4, nameof(CascadingValue<>.ChildContent), childContent);
         builder.CloseComponent();
     }
@@ -249,16 +236,15 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         _rootEditContextValidationMessageStore = null;
     }
 
-    protected virtual void DeinitializeRootEditContext() => _rootEditContext = null;
+    protected virtual void DeinitializeRootEditContext() => LastParametersTransition.RootEditContextTransition.New = null;
 
     protected virtual void DeinitializeAncestorEditContext()
     {
-        if (_ancestorEditContext is null) {
+        if (!LastParametersTransition.AncestorEditContextTransition.TryGetNew(out var editContext, invalidate: true)) {
             return;
         }
 
-        _ancestorEditContext.OnValidationRequested -= OnValidateModel;
-        _ancestorEditContext = null;
+        editContext.OnValidationRequested -= OnValidateModel;
     }
 
     protected virtual void DeinitializeActorEditContextValidationMessageStore()
@@ -272,17 +258,18 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
 
     protected virtual void DeinitializeActorEditContext()
     {
-        if (_actorEditContext is null) {
+        var editContextTransition = LastParametersTransition.ActorEditContextTransition;
+        if (!editContextTransition.TryGetNew(out var editContext)) {
             return;
         }
 
-        _actorEditContext.OnFieldChanged -= OnValidateField;
+        editContext.OnFieldChanged -= OnValidateField;
 
-        if (_areActorEditContextAndAncestorEditContextNotEqual) {
-            _actorEditContext.OnValidationRequested -= BubbleUpOnValidationRequested;
+        if (LastParametersTransition.IsNewEditContextOfActorAndAncestorNonNullAndDifferent) {
+            editContext.OnValidationRequested -= BubbleUpOnValidationRequested;
         }
 
-        _actorEditContext = null;
+        editContextTransition.New = null;
     }
 
     #region Disposal Behaviour
@@ -300,18 +287,18 @@ public abstract class EditContextualComponentBase<T> : ComponentBase, IEditConte
         var parametersTransition = new ParametersTransition {
             IsDisposing = true,
             EditContextualComponentBase = this,
-            ActorContextTransition = new EditContextTransition {
-                Old = _actorEditContext,
+            ActorEditContextTransition = new EditContextTransition {
+                Old = LastParametersTransition.ActorEditContextTransition.NewOrNull,
                 New = null,
                 IsFirstTransition = isFirstTransition
             },
-            AncestorContextTransition = new EditContextTransition {
-                Old = _ancestorEditContext,
+            AncestorEditContextTransition = new EditContextTransition {
+                Old = LastParametersTransition.AncestorEditContextTransition.NewOrNull,
                 New = null,
                 IsFirstTransition = isFirstTransition
             },
-            RootContextTransition = new EditContextTransition {
-                Old = _rootEditContext,
+            RootEditContextTransition = new EditContextTransition {
+                Old = LastParametersTransition.RootEditContextTransition.NewOrNull,
                 New = null,
                 IsFirstTransition = isFirstTransition
             }
