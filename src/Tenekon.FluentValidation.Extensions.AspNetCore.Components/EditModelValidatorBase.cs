@@ -11,27 +11,27 @@ using Microsoft.Extensions.Logging;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public abstract class ComponentValidatorBase : EditContextualComponentBase<ComponentValidatorBase>, IComponentValidator,
+public abstract class EditModelValidatorBase : EditContextualComponentBase<EditModelValidatorBase>, IEditModelValidator,
     IComponentValidationNotifier, IHandlingParametersTransition
 {
     static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
 
-    private readonly RenderFragment _renderComponentValidatorContent;
+    private readonly RenderFragment _renderEditModelValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
-    private readonly RenderFragment<RenderFragment?> _renderComponentValidatorRoutesFragment;
+    private readonly RenderFragment<RenderFragment?> _renderEditModelValidatorRoutesFragment;
     private readonly Action<ValidationStrategy<object>> _applyValidationStrategyAction;
     private bool _havingValidatorSetExplicitly;
     private IValidator? _validator;
     private ServiceScopeSource _serviceScopeSource;
 
     /* TODO: Make pluggable */
-    // internal readonly LeafComponentValidatorContext _leafComponentValidatorContext = new();
+    // internal readonly LeafEditModelValidatorContext _leafEditModelValidatorContext = new();
 
-    protected ComponentValidatorBase()
+    protected EditModelValidatorBase()
     {
-        _renderComponentValidatorContent = RenderComponentValidatorContent;
+        _renderEditModelValidatorContent = RenderEditModelValidatorContent;
         _renderEditContextualComponentFragment = childContent => builder => RenderEditContextualComponent(builder, childContent);
-        _renderComponentValidatorRoutesFragment = childContent => builder => RenderComponentValidatorRoutes(builder, childContent);
+        _renderEditModelValidatorRoutesFragment = childContent => builder => RenderEditModelValidatorRoutes(builder, childContent);
         _applyValidationStrategyAction = ApplyValidationStrategy;
     }
 
@@ -50,7 +50,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     private IServiceProvider? ServiceProvider { get; set; }
 
     [Inject]
-    private ILogger<ComponentValidatorBase>? Logger { get; set; }
+    private ILogger<EditModelValidatorBase>? Logger { get; set; }
 
     [Parameter]
     public Type? ValidatorType { get; set; }
@@ -85,24 +85,24 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     [Parameter]
     public Expression<Func<object>>[]? Routes { get; set; }
 
-    private void RenderComponentValidatorRoutes(RenderTreeBuilder builder, RenderFragment? childContent)
+    private void RenderEditModelValidatorRoutes(RenderTreeBuilder builder, RenderFragment? childContent)
     {
-        builder.OpenComponent<ComponentValidatorRoutes>(sequence: 0);
-        builder.AddComponentParameter(sequence: 1, nameof(ComponentValidatorRoutes.Routes), Routes);
+        builder.OpenComponent<EditModelValidatorRoutes>(sequence: 0);
+        builder.AddComponentParameter(sequence: 1, nameof(EditModelValidatorRoutes.Routes), Routes);
         builder.AddComponentParameter(sequence: 2, nameof(ChildContent), childContent);
         builder.CloseComponent();
     }
 
-    private void RenderComponentValidatorContent(RenderTreeBuilder builder)
+    private void RenderEditModelValidatorContent(RenderTreeBuilder builder)
     {
         if (Routes is not null) {
-            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderComponentValidatorRoutesFragment(ChildContent));
+            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelValidatorRoutesFragment(ChildContent));
         } else {
             builder.AddContent(sequence: 1, _renderEditContextualComponentFragment, ChildContent);
         }
     }
 
-    private void RenderComponentValidator(RenderTreeBuilder builder, RenderFragment childContent)
+    private void RenderEditModelValidator(RenderTreeBuilder builder, RenderFragment childContent)
     {
         builder.OpenComponent<CascadingValue<IComponentValidationNotifier>>(sequence: 0);
         builder.AddComponentParameter(sequence: 1, "IsFixed", value: true);
@@ -117,8 +117,8 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
     protected virtual void ConfigureValidationContext(ConfigueValidationContextArguments arguments)
     {
         /* TODO: Make pluggable */
-        // arguments.ValidationContext.RootContextData[ComponentValidatorContextLookupKey.Standard] =
-        //     _leafComponentValidatorContext;
+        // arguments.ValidationContext.RootContextData[EditModelValidatorContextLookupKey.Standard] =
+        //     _leafEditModelValidatorContext;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -176,7 +176,7 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         _actorEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
     }
 
-    void IComponentValidator.ValidateFullModel() => LastParametersTransition.RootEditContextTransition.New.Validate();
+    void IEditModelValidator.ValidateFullModel() => LastParametersTransition.RootEditContextTransition.New.Validate();
 
     private void ValidateModel()
     {
@@ -202,12 +202,12 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
 
-    protected virtual void NotifyModelValidationRequested(ComponentValidatorModelValidationRequestedArgs args)
+    protected virtual void NotifyModelValidationRequested(EditModelValidatorModelValidationRequestedArgs args)
     {
-        // A. Whenever an actor edit context of a direct descendant of ComponentValidatorRoutes fires OnValidationRequested,
+        // A. Whenever an actor edit context of a direct descendant of EditModelValidatorRoutes fires OnValidationRequested,
         //    it bubbles up to the root edit context, triggering OnValidateModel(object? sender, ValidationRequestedEventArgs args)
-        //    and implicitly ValidateModel() of any component validator associated with the root edit context,
-        //    except ComponentValidatorRoutes. This is because they do not subscribe to OnValidationRequested of the root edit context
+        //    and implicitly ValidateModel() of any validator component associated with the root edit context,
+        //    except EditModelValidatorRoutes. This is because they do not subscribe to OnValidationRequested of the root edit context
         //    to avoid a second invocation of ValidateModel().
         // An additional safety net: To prevent a potential second invocation of ValidateModel(), we return early if the original source of
         // the event is reference-equal to the root edit context, since that instance already handles OnValidationRequested for
@@ -219,10 +219,10 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         ValidateModel();
     }
 
-    void IComponentValidationNotifier.NotifyModelValidationRequested(ComponentValidatorModelValidationRequestedArgs args) =>
+    void IComponentValidationNotifier.NotifyModelValidationRequested(EditModelValidatorModelValidationRequestedArgs args) =>
         NotifyModelValidationRequested(args);
 
-    void IComponentValidator.Validate() => ValidateModel();
+    void IEditModelValidator.Validate() => ValidateModel();
 
     // TODO: Removable?
     private ValidationResult Validate(ValidationContext<object> validationContext)
@@ -231,8 +231,8 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         try {
             return _validator.Validate(validationContext);
         } catch (InvalidOperationException error) {
-            throw new ComponentValidationException(
-                $"{error.Message} Consider to make use of {nameof(ComponentValidatorSubpath)}, {nameof(ComponentValidatorRoutes)} or similiar.",
+            throw new EditModelValidationException(
+                $"{error.Message} Consider to make use of {nameof(EditModelValidatorSubpath)}, {nameof(EditModelValidatorRoutes)} or similiar.",
                 error);
         }
     }
@@ -271,10 +271,10 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
         }
     }
 
-    void IComponentValidationNotifier.NotifyDirectFieldValidationRequested(ComponentValidatorDirectFieldValidationRequestedArgs args) =>
+    void IComponentValidationNotifier.NotifyDirectFieldValidationRequested(EditModelValidatorDirectFieldValidationRequestedArgs args) =>
         ValidateDirectField(args.FieldIdentifier);
 
-    void IComponentValidator.ValidateDirectField(FieldIdentifier fieldIdentifier) => ValidateDirectField(fieldIdentifier);
+    void IEditModelValidator.ValidateDirectField(FieldIdentifier fieldIdentifier) => ValidateDirectField(fieldIdentifier);
 
     private void ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier)
     {
@@ -311,14 +311,14 @@ public abstract class ComponentValidatorBase : EditContextualComponentBase<Compo
 
     protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
 
-    void IComponentValidationNotifier.NotifyNestedFieldValidationRequested(ComponentValidatorNestedFieldValidationRequestedArgs args) =>
+    void IComponentValidationNotifier.NotifyNestedFieldValidationRequested(EditModelValidatorNestedFieldValidationRequestedArgs args) =>
         ValidateNestedField(args.FullFieldPath, args.SubFieldIdentifier);
 
-    void IComponentValidator.ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier) =>
+    void IEditModelValidator.ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier) =>
         ValidateNestedField(fullFieldPath, subFieldIdentifier);
 
     protected override void BuildRenderTree(RenderTreeBuilder builder) =>
-        RenderComponentValidator(builder, _renderComponentValidatorContent);
+        RenderEditModelValidator(builder, _renderEditModelValidatorContent);
 
     private void DeinitalizeServiceScopeSource()
     {

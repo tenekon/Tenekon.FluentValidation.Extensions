@@ -2,10 +2,10 @@
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public sealed class ComponentValidatorDirectFieldValidationRequestedArgs(
+public sealed class EditModelValidatorDirectFieldValidationRequestedArgs(
     object source,
     object originalSource,
-    FieldIdentifier fieldIdentifier) : ComponentValidatorValidationRequestArgs(source, originalSource)
+    FieldIdentifier fieldIdentifier) : EditModelValidatorValidationRequestArgs(source, originalSource)
 {
     public FieldIdentifier FieldIdentifier { get; } = fieldIdentifier;
 }

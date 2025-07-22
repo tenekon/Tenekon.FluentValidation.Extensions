@@ -1,5 +1,5 @@
 <!-- omit from toc -->
-# :open_book: Component Validator Architecture [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
+# :open_book: Validator Components Architecture [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
 <!-- problem:
 https://github.com/dotnet/aspnetcore/issues/57573#issuecomment-2744321059 -->
@@ -69,19 +69,19 @@ There exists a few established Blazor integrations for FluentValidation:
 3. vNext.BlazorComponents.FluentValidation
    ✅ solid, but desired default behaviour having AssemblyScannerValidatorFactory as fallback in case of ServiceProviderValidatorFactory results into null-validator?, no edit context nesting*1
 
-*1: "no edit context nesting" means you have to work with one and the same edit context when using the FluentValidation aware validator component across the wohle component graph beneath (inside ChildContent RenderFragment) the EditForm (or similiar).
+*1: "no edit context nesting" means you have to work with one and the same edit context when using the library-authored FluentValidation-aware validator component across the wohle component graph beneath (inside ChildContent RenderFragment) the EditForm (or similiar).
 
 ## Proposal
 
 My proposal is a more modular approach, where you plug'n'play validators to your behave, a solution that is not too opinionated:
 
-1. `ComponentValidatorRootpath`
-2. `ComponentValidatorSubpath`
-3. `ComponentValidatorRoutes`
+1. `EditModelValidatorRootpath`
+2. `EditModelValidatorSubpath`
+3. `EditModelValidatorRoutes`
 
 each having its own characteristicas.
 
-**`ComponentValidatorRootpath`**
+**`EditModelValidatorRootpath`**
 
 - A. It execpts an ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example a `EditForm` or `CascadedValue` with an instance of `EditContext`.
 
@@ -99,7 +99,7 @@ each having its own characteristicas.
   - A. to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
   - B. to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context, if root edit context and actor edit context are not reference equal.
 
-**`ComponentValidatorSubpath`**
+**`EditModelValidatorSubpath`**
 
 - A. It expects an ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example a `EditForm` or `CascadedValue` with an instance of `EditContext`.
 
@@ -117,11 +117,11 @@ each having its own characteristicas.
   - A. to a validator component scoped `ValidationMessageStore` that is attached to the root edit context.
   - B. to a validator component scoped `ValidationMessageStore` that is attached to the actor edit context, if root edit context and actor edit context are not reference equal.
 
-**`ComponentValidatorRoutes`**
+**`EditModelValidatorRoutes`**
 
 - A. It expects an ancestor edit context of type `EditContext` and does not work without one, thus the validator component must be a child of for example `EditForm` or `CascadedValue` with an instance of `EditContext`.
 
-- B. It expects an ancestor component validator of type `IComponentValidator` and does not work without one, thus the validator component must be a child of for example `ComponentValidatorRootpath` or `ComponentValidatorSubpath`.
+- B. It expects an ancestor validator of type `IEditModelValidationNotifier` and does not work without one, thus the validator component must be a child of for example `EditModelValidatorRootpath` or `EditModelValidatorSubpath`.
 
 - C. The ancestor edit context becomes the root edit context if the ancestor edit itself does not have a key-value-pair stored in `Properties` of ancestor edit context that represents the root edit context, otherwise the ancestor edit context will now store itself as property key-value-pair to `Properties`.
 
@@ -129,4 +129,4 @@ each having its own characteristicas.
 
 - E. The validator component acts on the model validation request of the actor edit context by bubbling it up to the root edit context, if the actor edit context is not reference equal to the root edit context.
 
-- F. The validator component acts on the field validation request of the actor edit context by delegating it to the ancestor component validator.
+- F. The validator component acts on the field validation request of the actor edit context by delegating it to the ancestor validator component.

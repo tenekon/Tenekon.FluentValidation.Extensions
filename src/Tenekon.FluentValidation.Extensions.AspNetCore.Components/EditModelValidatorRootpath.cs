@@ -2,26 +2,26 @@
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public class ComponentValidatorRootpath : ComponentValidatorBase, IEditContextualComponentTrait
+public class EditModelValidatorRootpath : EditModelValidatorBase, IEditContextualComponentTrait
 {
     EditContext? IEditContextualComponentTrait.ActorEditContext => AncestorEditContext;
 
-    // TODO: Consolidate duplicate code in ComponentValidatorSubpath
+    // TODO: Consolidate duplicate code in EditModelValidatorSubpath
     /* TODO: Make pluggable */
     // protected override void OnAncestorEditContextChanged(EditContextChangedEventArgs args)
     // {
-    //     RootComponentValidatorContext rootComponentValidatorContext;
-    //     if (args.New.Properties.TryGetValue(ComponentValidatorContextLookupKey.Standard, out var validatorContext)) {
-    //         if (validatorContext is not RootComponentValidatorContext rootValidatorContext2) {
+    //     RootEditModelValidatorContext rootEditModelValidatorContext;
+    //     if (args.New.Properties.TryGetValue(EditModelValidatorContextLookupKey.Standard, out var validatorContext)) {
+    //         if (validatorContext is not RootEditModelValidatorContext rootValidatorContext2) {
     //             throw new InvalidOperationException("Root validator context lookup key was misued from a third-party.");
     //         }
-    //         rootComponentValidatorContext = rootValidatorContext2;
+    //         rootEditModelValidatorContext = rootValidatorContext2;
     //     } else {
-    //         rootComponentValidatorContext = new RootComponentValidatorContext();
-    //         args.New.Properties[ComponentValidatorContextLookupKey.Standard] = rootComponentValidatorContext;
+    //         rootEditModelValidatorContext = new RootEditModelValidatorContext();
+    //         args.New.Properties[EditModelValidatorContextLookupKey.Standard] = rootEditModelValidatorContext;
     //     }
     //
-    //     rootComponentValidatorContext.AttachValidatorContext(_leafComponentValidatorContext);
+    //     rootEditModelValidatorContext.AttachValidatorContext(_leafEditModelValidatorContext);
     //     base.OnAncestorEditContextChanged(args);
     // }
 
@@ -34,13 +34,13 @@ public class ComponentValidatorRootpath : ComponentValidatorBase, IEditContextua
     //         return;
     //     }
     //
-    //     if (!editContext.TryGetComponentValidatorContext<RootComponentValidatorContext>(out var rootValidatorContext)) {
+    //     if (!editContext.TryGetEditModelValidatorContext<RootEditModelValidatorContext>(out var rootValidatorContext)) {
     //         throw new InvalidOperationException(
     //             "Root validator context lookup key was removed before the own implementation had the chance to properly detach its validator context.");
     //     }
     //
-    //     if (rootValidatorContext.DetachValidatorContext(_leafComponentValidatorContext)) {
-    //         editContext.Properties.Remove(ComponentValidatorContextLookupKey.Standard);
+    //     if (rootValidatorContext.DetachValidatorContext(_leafEditModelValidatorContext)) {
+    //         editContext.Properties.Remove(EditModelValidatorContextLookupKey.Standard);
     //     }
     //
     //     base.DeinitializeAncestorEditContext();

@@ -1,5 +1,5 @@
 <!-- omit from toc -->
-# :microscope: Component Validator Flow Logic [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
+# :microscope: Validator Components Flow Logic [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
 <!-- omit from toc -->
 ## Table of Contents
@@ -23,7 +23,7 @@ flowchart TD
         ActorVsSuper{"ActorEditContext ≠ AncestorEditContext?"}
         RegisterActorStore["Also register new indepdendent ValidationMessageStore to ActorEditContext"]
         SkipActorStore["Skip ActorEditContext ValidationMessageStore"]
-        n2["Inherits from ComponentValidatorBase?"]
+        n2["Inherits from EditModelValidatorBase?"]
   end
  subgraph s3["Resolve ActorEditContext"]
         ActorDefined{"ActorEditContext already defined?"}
@@ -44,8 +44,8 @@ flowchart TD
         BubbleCheck{"ActorEditContext ≠ AncestorEditContext?"}
         BubbleVR["Subscribe OnValidationRequested (ActorEditContext) → bubble up to RootEditContext"]
   end
- subgraph s6["ComponentValidatorSubpath"]
-        Subpath["ComponentValidatorSubpath"]
+ subgraph s6["EditModelValidatorSubpath"]
+        Subpath["EditModelValidatorSubpath"]
         SubCtxCheck{"ActorEditContext / Model?"}
         ErrorBoth["❌ ERROR: Both EditContext and Model set"]
         ErrorNone["❌ ERROR: Neither EditContext nor Model set"]
@@ -54,15 +54,15 @@ flowchart TD
         Stop2(("Throw error"))
         n3["Continue component initialization"]
   end
- subgraph s7["ComponentValidatorRoutes"]
-        StartRoutes[["Cascaded IComponentValidator from Rootpath or Subpath ancestor"]]
-        RoutesComponent["ComponentValidatorRoutes"]
+ subgraph s7["EditModelValidatorRoutes"]
+        StartRoutes[["Cascaded IEditModelValidator from Rootpath or Subpath ancestor"]]
+        RoutesComponent["EditModelValidatorRoutes"]
         RoutesComponentActor["Always provide ActorEditContext via model sentinel"]
   end
- subgraph componentValdatorBase["ComponentValidatorBase"]
+ subgraph componentValdatorBase["EditModelValidatorBase"]
         n39["Begin component initialization"]
         componentValidatorClassGraph["componentValidatorClassGraph"]
-        ComponentValidatorBaseEditContextCascadingParameter[["Cascaded EditContext becomes AncestorEditContext"]]
+        EditModelValidatorBaseEditContextCascadingParameter[["Cascaded EditContext becomes AncestorEditContext"]]
   end
  subgraph componentValidatorBaseNesting["&nbsp;"]
         n36["Allowed Nesting"]
@@ -70,13 +70,13 @@ flowchart TD
         n38["⚠ Routes must be nested under Rootpath or Subpath"]
   end
  subgraph componentValidatorClassGraph["&nbsp;"]
-        ComponentValidatorBaseClass["ComponentValidator[Rootpath, Subpath or Routes]"]
+        EditModelValidatorBaseClass["EditModelValidator[Rootpath, Subpath or Routes]"]
         componentValidatorBaseNesting
   end
     StartRoutes --> RoutesComponent
     RoutesComponent --> RoutesComponentActor
-    ComponentValidatorBaseEditContextCascadingParameter --> ComponentValidatorBaseClass
-    ComponentValidatorBaseClass --> CheckRootKey
+    EditModelValidatorBaseEditContextCascadingParameter --> EditModelValidatorBaseClass
+    EditModelValidatorBaseClass --> CheckRootKey
     CheckRootKey -- Yes --> UseExistingRoot
     UseExistingRoot --> ActorDefined
     CheckRootKey -- No --> UseSuperAsRoot
@@ -110,8 +110,8 @@ flowchart TD
     ErrorBoth --> Stop2
     BubbleVR --> n12
     n36 --> n37 & n38
-    n3 --> ComponentValidatorBaseClass & n39
-    n39 --> ComponentValidatorBaseClass
+    n3 --> EditModelValidatorBaseClass & n39
+    n39 --> EditModelValidatorBaseClass
     RoutesComponentActor --> n39
     n2@{ shape: diam}
     n3@{ shape: rect}
@@ -131,11 +131,11 @@ flowchart TD
     style StartRoutes fill:#BBDEFB,stroke:#000,stroke-width:1px,color:#000000
     style RoutesComponent fill:#E1BEE7,color:#000000
     style n39 fill:#FFE0B2
-    style ComponentValidatorBaseEditContextCascadingParameter fill:#BBDEFB,stroke:#000,stroke-width:1px,color:#000000
+    style EditModelValidatorBaseEditContextCascadingParameter fill:#BBDEFB,stroke:#000,stroke-width:1px,color:#000000
     style n36 fill:#FFF9C4,stroke:#000,color:#000000
     style n37 fill:#dfd,color:#000000
     style n38 fill:#fdd,color:#000000
-    style ComponentValidatorBaseClass fill:#E1BEE7,stroke:#000,stroke-width:1px,color:#000000
+    style EditModelValidatorBaseClass fill:#E1BEE7,stroke:#000,stroke-width:1px,color:#000000
     style componentValidatorBaseNesting fill:transparent
     style n12 fill:#FFE0B2
 ```
@@ -150,16 +150,16 @@ config:
   look: classic
 ---
 flowchart TD
- subgraph s8["ComponentValidatorRoutes Event Handling"]
+ subgraph s8["EditModelValidatorRoutes Event Handling"]
         n16["OnValidationRequested (RootEditContext)"]
-        n17@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event won't delegate model validation request to \nIComponentValidator; the model validation request become a no-op.</span>" }
+        n17@{ label: "<span style=\"padding-left:\">The\n component associated to that edit context that was triggered by the \nOnValidationRequested event won't delegate model validation request to \nIEditModelValidator; the model validation request become a no-op.</span>" }
         n18["OnFieldChanged (ActorEditContext)"]
         n19["The
  component associated to that edit context that was triggered by the 
-OnFieldChanged event delegates a direct or a nested field validation request to IComponentValidator."]
+OnFieldChanged event delegates a direct or a nested field validation request to IEditModelValidator."]
         n20["EditContext Event Handling"]
   end
- subgraph s9["ComponentValidatorBase Event Handling"]
+ subgraph s9["EditModelValidatorBase Event Handling"]
         n21["OnValidationRequested (ActorEditContext)"]
         n22["The
  validation request bubbles up to RootEditContext."]

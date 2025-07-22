@@ -8,29 +8,29 @@ using Shouldly;
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 #pragma warning disable xUnit1042
-public record ValidatorTestCase<TComponentValidator>(
+public record ValidatorTestCase<TEditModelValidator>(
     string Name,
-    Action<ComponentParameterCollectionBuilder<TComponentValidator>, Type, object, EditContext> CustomizeParameters)
-    where TComponentValidator : ComponentValidatorBase;
+    Action<ComponentParameterCollectionBuilder<TEditModelValidator>, Type, object, EditContext> CustomizeParameters)
+    where TEditModelValidator : EditModelValidatorBase;
 
-public static class ComponentValidatorBasicTestCases
+public static class EditModelValidatorBasicTestCases
 {
     private static IValidator CreateValidator(Type validatorType) =>
         (IValidator)(Activator.CreateInstance(validatorType) ?? throw new InvalidOperationException());
 
     public static IEnumerable<object[]> All => [
         [
-            new ValidatorTestCase<ComponentValidatorRootpath>(
+            new ValidatorTestCase<EditModelValidatorRootpath>(
                 "RootpathWithValidatorType",
                 (p, validatorType, model, ctx) => { p.Add(x => x.ValidatorType, validatorType); })
         ],
         [
-            new ValidatorTestCase<ComponentValidatorRootpath>(
+            new ValidatorTestCase<EditModelValidatorRootpath>(
                 "RootpathWithValidatorInstance",
                 (p, validatorType, model, ctx) => { p.Add(x => x.Validator, CreateValidator(validatorType)); })
         ],
         [
-            new ValidatorTestCase<ComponentValidatorSubpath>(
+            new ValidatorTestCase<EditModelValidatorSubpath>(
                 "SubpathWithModelAndValidatorType",
                 (p, validatorType, model, ctx) => {
                     p.Add(x => x.ValidatorType, validatorType);
@@ -38,7 +38,7 @@ public static class ComponentValidatorBasicTestCases
                 })
         ],
         [
-            new ValidatorTestCase<ComponentValidatorSubpath>(
+            new ValidatorTestCase<EditModelValidatorSubpath>(
                 "SubpathWithEditContextAndValidatorType",
                 (p, validatorType, model, ctx) => {
                     p.Add(x => x.ValidatorType, validatorType);
@@ -46,7 +46,7 @@ public static class ComponentValidatorBasicTestCases
                 })
         ],
         [
-            new ValidatorTestCase<ComponentValidatorSubpath>(
+            new ValidatorTestCase<EditModelValidatorSubpath>(
                 "SubpathWithModelAndValidatorInstance",
                 (p, validatorType, model, ctx) => {
                     p.Add(x => x.Validator, CreateValidator(validatorType));
@@ -54,7 +54,7 @@ public static class ComponentValidatorBasicTestCases
                 })
         ],
         [
-            new ValidatorTestCase<ComponentValidatorSubpath>(
+            new ValidatorTestCase<EditModelValidatorSubpath>(
                 "SubpathWithEditContextAndValidatorInstance",
                 (p, validatorType, model, ctx) => {
                     p.Add(x => x.Validator, CreateValidator(validatorType));
@@ -64,14 +64,14 @@ public static class ComponentValidatorBasicTestCases
     ];
 }
 
-public class ComponentValidatorBasicTests : TestContext
+public class EditModelValidatorBasicTests : TestContext
 {
-    public ComponentValidatorBasicTests() => Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>(includeInternalTypes: true);
+    public EditModelValidatorBasicTests() => Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>(includeInternalTypes: true);
 
     [Theory]
-    [MemberData(nameof(ComponentValidatorBasicTestCases.All), MemberType = typeof(ComponentValidatorBasicTestCases))]
-    public void ValidModel_ValidationReturnsTrue<TComponentValidator>(ValidatorTestCase<TComponentValidator> testCase)
-        where TComponentValidator : ComponentValidatorBase
+    [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
+    public void ValidModel_ValidationReturnsTrue<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
+        where TEditModelValidator : EditModelValidatorBase
     {
         var modelA = new { A = new List<string>() };
         var field = FieldIdentifier.Create(() => modelA.A[0]);
@@ -79,7 +79,7 @@ public class ComponentValidatorBasicTests : TestContext
         var model = new Model("World");
         var context = new EditContext(model);
 
-        using var cut = RenderComponent<TComponentValidator>(parameters => {
+        using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
             testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
         });
@@ -96,14 +96,14 @@ public class ComponentValidatorBasicTests : TestContext
     }
 
     [Theory]
-    [MemberData(nameof(ComponentValidatorBasicTestCases.All), MemberType = typeof(ComponentValidatorBasicTestCases))]
-    public void InvalidModel_ValidationReturnsFalse<TComponentValidator>(ValidatorTestCase<TComponentValidator> testCase)
-        where TComponentValidator : ComponentValidatorBase
+    [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
+    public void InvalidModel_ValidationReturnsFalse<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
+        where TEditModelValidator : EditModelValidatorBase
     {
         var model = new Model("WRONG");
         var context = new EditContext(model);
 
-        using var cut = RenderComponent<TComponentValidator>(parameters => {
+        using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
             testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
         });
@@ -119,14 +119,14 @@ public class ComponentValidatorBasicTests : TestContext
     }
 
     [Theory]
-    [MemberData(nameof(ComponentValidatorBasicTestCases.All), MemberType = typeof(ComponentValidatorBasicTestCases))]
-    public void ValidModel_DirectFieldValidationReturnsFalse<TComponentValidator>(ValidatorTestCase<TComponentValidator> testCase)
-        where TComponentValidator : ComponentValidatorBase
+    [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
+    public void ValidModel_DirectFieldValidationReturnsFalse<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
+        where TEditModelValidator : EditModelValidatorBase
     {
         var model = new Model("WRONG");
         var context = new EditContext(model);
 
-        using var cut = RenderComponent<TComponentValidator>(parameters => {
+        using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
             testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
         });
@@ -145,19 +145,19 @@ public class ComponentValidatorBasicTests : TestContext
     }
 
     [Theory]
-    [MemberData(nameof(ComponentValidatorBasicTestCases.All), MemberType = typeof(ComponentValidatorBasicTestCases))]
-    public void ValidModel_NestedFieldValidationReturnsFalse<TComponentValidator>(ValidatorTestCase<TComponentValidator> testCase)
-        where TComponentValidator : ComponentValidatorBase, IDisposable
+    [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
+    public void ValidModel_NestedFieldValidationReturnsFalse<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
+        where TEditModelValidator : EditModelValidatorBase, IDisposable
     {
         var model = new Model { Child = { Hello = "WRONG" } };
         var context = new EditContext(model);
 
-        using var cut = RenderComponent<TComponentValidator>(parameters => {
+        using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
             testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
             parameters.Add<Expression<Func<object>>[]?>(x => x.Routes, [() => model.Child]);
         });
-        var routes = cut.FindComponent<ComponentValidatorRoutes>();
+        var routes = cut.FindComponent<EditModelValidatorRoutes>();
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Child.Hello);
         var routesActorEditContext = routes.Instance.ActorEditContext;
         routesActorEditContext.NotifyFieldChanged(modelFieldIdentifier);

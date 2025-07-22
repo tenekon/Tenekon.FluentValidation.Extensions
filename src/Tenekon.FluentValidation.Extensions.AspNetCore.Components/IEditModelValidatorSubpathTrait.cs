@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public interface IComponentValidatorSubpathTrait
+public interface IEditModelValidatorSubpathTrait
 {
     public static readonly Func<ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
 

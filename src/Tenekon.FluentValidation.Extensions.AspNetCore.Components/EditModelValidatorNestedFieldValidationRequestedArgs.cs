@@ -2,11 +2,11 @@
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public sealed class ComponentValidatorNestedFieldValidationRequestedArgs(
+public sealed class EditModelValidatorNestedFieldValidationRequestedArgs(
     object source,
     object originalSource,
     FieldIdentifier fullFieldPath,
-    FieldIdentifier subFieldIdentifier) : ComponentValidatorValidationRequestArgs(source, originalSource)
+    FieldIdentifier subFieldIdentifier) : EditModelValidatorValidationRequestArgs(source, originalSource)
 {
     public FieldIdentifier FullFieldPath { get; } = fullFieldPath;
     public FieldIdentifier SubFieldIdentifier { get; } = subFieldIdentifier;

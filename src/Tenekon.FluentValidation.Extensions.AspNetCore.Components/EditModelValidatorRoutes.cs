@@ -21,18 +21,18 @@ file static class EditContextAccessor
 // The component wants to have an actor edit context with field references of the ancestor edit context, except the event invocations,
 //   because the components alone wants to act on OnFieldChanged and OnValidationRequested independently from the ancestor edit context.
 // CASCADING PARAMETER DEPENDENCIES:
-//   IComponentValidator provided by ComponentValidatorSubpath or ComponentValidatorRootpath
-public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentValidatorRoutes>, IEditContextualComponentTrait,
+//   IEditModelValidator provided by EditModelValidatorSubpath or EditModelValidatorRootpath
+public class EditModelValidatorRoutes : EditContextualComponentBase<EditModelValidatorRoutes>, IEditContextualComponentTrait,
     IHandlingParametersTransition
 {
     static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
 
-    static ComponentValidatorRoutes()
+    static EditModelValidatorRoutes()
     {
-        HandlingParametersTransitionAccessor<ComponentValidatorRoutes>.ParametersTransitionHandlerRegistry.RemoveHandler(
+        HandlingParametersTransitionAccessor<EditModelValidatorRoutes>.ParametersTransitionHandlerRegistry.RemoveHandler(
             SubscribeToRootEditContextOnValidationRequestedAction);
 
-        HandlingParametersTransitionAccessor<ComponentValidatorRoutes>.ParametersTransitionHandlerRegistry.RegisterHandler(
+        HandlingParametersTransitionAccessor<EditModelValidatorRoutes>.ParametersTransitionHandlerRegistry.RegisterHandler(
             CopyAncestorEditContextFieldReferencesToActorEditContext,
             // If we want to make the registry API public, we should consider to make adding position relative to already added handlers,
             // because now it is sufficient to insert the handler at the start to fulfill the contract required by the above handler.
@@ -101,7 +101,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
     {
         if (RoutesOwningComponentValidationNotifier is null) {
             throw new InvalidOperationException(
-                $"{GetType().Name} requires a non-null cascading parameter of type {typeof(IComponentValidationNotifier)}, internally provided by e.g. {nameof(ComponentValidatorRootpath)} or {nameof(ComponentValidatorSubpath)}.");
+                $"{GetType().Name} requires a non-null cascading parameter of type {typeof(IComponentValidationNotifier)}, internally provided by e.g. {nameof(EditModelValidatorRootpath)} or {nameof(EditModelValidatorSubpath)}.");
         }
 
         if (Routes is null) {
@@ -156,7 +156,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         ArgumentNullException.ThrowIfNull(sender);
         Debug.Assert(RoutesOwningComponentValidationNotifier is not null);
         var componentValidator = RoutesOwningComponentValidationNotifier;
-        var validationRequestedArgs = new ComponentValidatorModelValidationRequestedArgs(sender, sender);
+        var validationRequestedArgs = new EditModelValidatorModelValidationRequestedArgs(sender, sender);
         componentValidator.NotifyModelValidationRequested(validationRequestedArgs);
     }
 
@@ -170,7 +170,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         var subFieldIdentifier = e.FieldIdentifier;
         var subFieldModelIdentifier = new ModelIdentifier(subFieldIdentifier.Model);
         if (subFieldModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
-            var directFieldValidationRequestArgs = new ComponentValidatorDirectFieldValidationRequestedArgs(
+            var directFieldValidationRequestArgs = new EditModelValidatorDirectFieldValidationRequestedArgs(
                 this,
                 sender,
                 subFieldIdentifier);
@@ -190,7 +190,7 @@ public class ComponentValidatorRoutes : EditContextualComponentBase<ComponentVal
         var fullFieldPathString = $"{subModelAccessPath.FieldName}.{subFieldIdentifier.FieldName}";
         // Scenario 1: Build a FieldIdentifier with City as the Model and City.Address.Street as the FieldName
         var fullFieldPath = new FieldIdentifier(subModelAccessPath.Model, fullFieldPathString);
-        var nestedFieldValidationRequestedArgs = new ComponentValidatorNestedFieldValidationRequestedArgs(
+        var nestedFieldValidationRequestedArgs = new EditModelValidatorNestedFieldValidationRequestedArgs(
             this,
             sender,
             fullFieldPath,

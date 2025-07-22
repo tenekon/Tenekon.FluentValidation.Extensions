@@ -5,56 +5,56 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextualComponentTrait, IComponentValidatorSubpathTrait
+public class EditModelValidatorSubpath : EditModelValidatorBase, IEditContextualComponentTrait, IEditModelValidatorSubpathTrait
 {
-    private static Exception DefaultExceptionFactoryImpl(IComponentValidatorSubpathTrait.ErrorContext context) =>
+    private static Exception DefaultExceptionFactoryImpl(IEditModelValidatorSubpathTrait.ErrorContext context) =>
         context.Identifier switch {
-            IComponentValidatorSubpathTrait.ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
+            IEditModelValidatorSubpathTrait.ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
                 $"{context.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter, but not both."),
-            IComponentValidatorSubpathTrait.ErrorIdentifier.NoActorEditContextAndNoModel => new InvalidOperationException(
+            IEditModelValidatorSubpathTrait.ErrorIdentifier.NoActorEditContextAndNoModel => new InvalidOperationException(
                 $"{context.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter."),
-            _ => IComponentValidatorSubpathTrait.DefaultExceptionFactory(context)
+            _ => IEditModelValidatorSubpathTrait.DefaultExceptionFactory(context)
         };
 
-    public static readonly Func<IComponentValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
+    public static readonly Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
         DefaultExceptionFactoryImpl;
 
-    Func<IComponentValidatorSubpathTrait.ErrorContext, Exception> IComponentValidatorSubpathTrait.ExceptionFactory =>
+    Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> IEditModelValidatorSubpathTrait.ExceptionFactory =>
         DefaultExceptionFactory;
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties
     public object? Model {
 #pragma warning restore BL0007 // Component parameters should be auto properties
-        get => ((IComponentValidatorSubpathTrait)this).Model;
-        set => ((IComponentValidatorSubpathTrait)this).Model = value;
+        get => ((IEditModelValidatorSubpathTrait)this).Model;
+        set => ((IEditModelValidatorSubpathTrait)this).Model = value;
     }
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties
     public EditContext? EditContext {
 #pragma warning restore BL0007 // Component parameters should be auto properties
-        get => ((IComponentValidatorSubpathTrait)this).ActorEditContext;
-        set => ((IComponentValidatorSubpathTrait)this).SetActorEditContextExplicitly(value);
+        get => ((IEditModelValidatorSubpathTrait)this).ActorEditContext;
+        set => ((IEditModelValidatorSubpathTrait)this).SetActorEditContextExplicitly(value);
     }
 
-    bool IComponentValidatorSubpathTrait.HasActorEditContextBeenSetExplicitly { get; set; }
-    object? IComponentValidatorSubpathTrait.Model { get; set; }
-    EditContext? IComponentValidatorSubpathTrait.ActorEditContext { get; set; }
+    bool IEditModelValidatorSubpathTrait.HasActorEditContextBeenSetExplicitly { get; set; }
+    object? IEditModelValidatorSubpathTrait.Model { get; set; }
+    EditContext? IEditModelValidatorSubpathTrait.ActorEditContext { get; set; }
 
     EditContext? IEditContextualComponentTrait.ActorEditContext =>
-        ((IComponentValidatorSubpathTrait)this).ActorEditContext ?? throw new InvalidOperationException();
+        ((IEditModelValidatorSubpathTrait)this).ActorEditContext ?? throw new InvalidOperationException();
 
     protected override async Task OnParametersSetAsync()
     {
-        await ((IComponentValidatorSubpathTrait)this).OnSubpathParametersSetAsync();
+        await ((IEditModelValidatorSubpathTrait)this).OnSubpathParametersSetAsync();
         await base.OnParametersSetAsync();
     }
 
     // ReSharper disable once MemberHidesInterfaceMemberWithDefaultImplementation
     internal override async Task OnParametersTransitioningAsync()
     {
-        var actorEditContext = ((IComponentValidatorSubpathTrait)this).ActorEditContext;
+        var actorEditContext = ((IEditModelValidatorSubpathTrait)this).ActorEditContext;
         Debug.Assert(actorEditContext is not null);
         if (Validator is null && ValidatorType is null) {
             ValidatorType = typeof(IValidator<>).MakeGenericType(actorEditContext.Model.GetType());
@@ -66,18 +66,18 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     /* TODO: Make pluggable */
     // protected override void OnActorEditContextChanged(EditContextChangedEventArgs args)
     // {
-    //     RootComponentValidatorContext rootComponentValidatorContext;
-    //     if (args.New.Properties.TryGetValue(ComponentValidatorContextLookupKey.Standard, out var validatorContext)) {
-    //         if (validatorContext is not RootComponentValidatorContext rootValidatorContext2) {
+    //     RootEditModelValidatorContext rootEditModelValidatorContext;
+    //     if (args.New.Properties.TryGetValue(EditModelValidatorContextLookupKey.Standard, out var validatorContext)) {
+    //         if (validatorContext is not RootEditModelValidatorContext rootValidatorContext2) {
     //             throw new InvalidOperationException("Root validator context lookup key was misued from a third-party.");
     //         }
-    //         rootComponentValidatorContext = rootValidatorContext2;
+    //         rootEditModelValidatorContext = rootValidatorContext2;
     //     } else {
-    //         rootComponentValidatorContext = new RootComponentValidatorContext();
-    //         args.New.Properties[ComponentValidatorContextLookupKey.Standard] = rootComponentValidatorContext;
+    //         rootEditModelValidatorContext = new RootEditModelValidatorContext();
+    //         args.New.Properties[EditModelValidatorContextLookupKey.Standard] = rootEditModelValidatorContext;
     //     }
     //     
-    //     rootComponentValidatorContext.AttachValidatorContext(_leafComponentValidatorContext);
+    //     rootEditModelValidatorContext.AttachValidatorContext(_leafEditModelValidatorContext);
     //     base.OnActorEditContextChanged(args);
     // }
 
@@ -89,13 +89,13 @@ public class ComponentValidatorSubpath : ComponentValidatorBase, IEditContextual
     //         return;
     //     }
     //
-    //     if (!editContext.TryGetComponentValidatorContext<RootComponentValidatorContext>(out var rootValidatorContext)) {
+    //     if (!editContext.TryGetEditModelValidatorContext<RootEditModelValidatorContext>(out var rootValidatorContext)) {
     //         throw new InvalidOperationException(
     //             "Root validator context lookup key was removed before the own implementation had the chance to properly detach its validator context.");
     //     }
     //
-    //     if (rootValidatorContext.DetachValidatorContext(_leafComponentValidatorContext)) {
-    //         editContext.Properties.Remove(ComponentValidatorContextLookupKey.Standard);
+    //     if (rootValidatorContext.DetachValidatorContext(_leafEditModelValidatorContext)) {
+    //         editContext.Properties.Remove(EditModelValidatorContextLookupKey.Standard);
     //     }
     //
     //     base.DeinitializeActorEditContext();
