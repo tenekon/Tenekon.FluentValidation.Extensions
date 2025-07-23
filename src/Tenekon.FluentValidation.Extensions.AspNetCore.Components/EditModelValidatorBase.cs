@@ -15,13 +15,29 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 public abstract class EditModelValidatorBase<TDerived> : EditContextualComponentBase<TDerived>, IEditModelValidator,
     IEditModelValidationNotifier where TDerived : EditModelValidatorBase<TDerived>, IParameterSetTransitionHandlerRegistryProvider
 {
+    static EditModelValidatorBase()
+    {
+        TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(UnsetEditModelSubpathReference, HandlerInsertPosition.After);
+        return;
+
+        void UnsetEditModelSubpathReference(EditContextualComponentBaseParameterSetTransition transition)
+        {
+            if (transition.Routes is { IsNewNullStateChanged: true, IsNewNull: true }) {
+                var component = Unsafe.As<EditModelValidatorBase<TDerived>>(transition.Component);
+                component._editModelSubpathReference = null;
+            }
+        }
+    }
+
     private readonly RenderFragment _renderEditModelValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
     private readonly RenderFragment<RenderFragment?> _renderEditModelSubpathFragment;
     private readonly Action<ValidationStrategy<object>> _applyValidationStrategyAction;
+    private readonly Action<object> _captureEditModelSubpathReferenceAction;
     private bool _havingValidatorSetExplicitly;
     private IValidator? _validator;
     private ServiceScopeSource _serviceScopeSource;
+    private EditModelSubpath? _editModelSubpathReference;
 
     /* TODO: Make pluggable */
     // internal readonly LeafEditModelValidatorContext _leafEditModelValidatorContext = new();
@@ -32,7 +48,13 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         _renderEditContextualComponentFragment = childContent => builder => RenderEditContextualComponent(builder, childContent);
         _renderEditModelSubpathFragment = childContent => builder => RenderEditModelSubpath(builder, childContent);
         _applyValidationStrategyAction = ApplyValidationStrategy;
+        _captureEditModelSubpathReferenceAction = CaptureEditModelSubpathReference;
+        return;
+
+        void CaptureEditModelSubpathReference(object reference) => _editModelSubpathReference = Unsafe.As<EditModelSubpath>(reference);
     }
+
+    public override EditContext ActorEditContext => _editModelSubpathReference?.ActorEditContext ?? base.ActorEditContext;
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties
@@ -93,6 +115,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         builder.OpenComponent<EditModelSubpath>(sequence: 0);
         builder.AddComponentParameter(sequence: 1, nameof(EditModelSubpath.Routes), Routes);
         builder.AddComponentParameter(sequence: 2, nameof(ChildContent), childContent);
+        builder.AddComponentReferenceCapture(3, _captureEditModelSubpathReferenceAction);
         builder.CloseComponent();
     }
 
@@ -371,8 +394,6 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 
     private struct ServiceScopeSource(IServiceProvider? serviceProvider) : IDisposable, IAsyncDisposable
     {
-        internal static ServiceScopeSource None { get; } = default;
-
         private readonly IServiceProvider? _serviceProvider = serviceProvider;
         private AsyncServiceScope? _asyncServiceScope;
         private int _state;

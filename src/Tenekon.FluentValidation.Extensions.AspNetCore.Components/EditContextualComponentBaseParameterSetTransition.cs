@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
@@ -60,6 +61,12 @@ internal class EditContextualComponentBaseParameterSetTransition : IRevisioner
     [field: MaybeNull]
     public virtual ClassValueTransition<RenderFragment> ChildContent {
         get => field ??= new ClassValueTransition<RenderFragment>() { Revisioner = this };
+    }
+    
+    [field: AllowNull]
+    [field: MaybeNull]
+    public virtual ClassValueTransition<Expression<Func<object>>[]> Routes {
+        get => field ??= new ClassValueTransition<Expression<Func<object>>[]>() { Revisioner = this };
     }
 
     public bool IsNewEditContextOfActorAndRootNonNullAndDifferent {

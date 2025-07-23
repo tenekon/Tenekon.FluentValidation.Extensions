@@ -180,12 +180,12 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
         get => Unsafe.As<ILastParameterSetTransitionTrait>(this).LastParameterSetTransition;
     }
 
-    public EditContext ActorEditContext =>
+    public virtual EditContext ActorEditContext =>
         LastParameterSetTransition.ActorEditContext.NewOrNull ?? throw new InvalidOperationException(
             $"The {nameof(ActorEditContext)} property hos not been yet initialized. Typically initialized the first time during component initialization.");
 
     [CascadingParameter]
-    protected EditContext? AncestorEditContext { get; private set; }
+    internal EditContext? AncestorEditContext { get; set; }
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }

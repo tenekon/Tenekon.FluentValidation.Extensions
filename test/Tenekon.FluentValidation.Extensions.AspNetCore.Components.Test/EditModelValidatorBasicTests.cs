@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Bunit;
 using FluentValidation;
 using Microsoft.AspNetCore.Components.Forms;
@@ -79,7 +78,7 @@ public class EditModelValidatorBasicTests : TestContext
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
         });
 
         context.Validate().ShouldBeTrue();
@@ -103,7 +102,7 @@ public class EditModelValidatorBasicTests : TestContext
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
         });
 
         context.Validate().ShouldBeFalse();
@@ -126,7 +125,7 @@ public class EditModelValidatorBasicTests : TestContext
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
         });
 
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Hello);
@@ -151,7 +150,7 @@ public class EditModelValidatorBasicTests : TestContext
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
             parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(Validator), model, context);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
             parameters.Add<Expression<Func<object>>[]?>(x => x.Routes, [() => model.Child]);
         });
         var subPath = cut.FindComponent<EditModelSubpath>();
@@ -173,28 +172,5 @@ public class EditModelValidatorBasicTests : TestContext
         DisposeComponents();
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContext, out _).ShouldBeFalse();
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(subPathActorEditContext, out _).ShouldBeFalse();
-    }
-}
-
-file record Model(string? Hello = null)
-{
-    public string? Hello { get; set; } = Hello;
-
-    [field: AllowNull]
-    [field: MaybeNull]
-    public ChildModel Child => field ??= new ChildModel();
-
-    public record ChildModel(string? Hello = null)
-    {
-        public string? Hello { get; set; } = Hello;
-    }
-}
-
-file class Validator : AbstractValidator<Model>
-{
-    public Validator()
-    {
-        When(x => x.Hello is not null, () => RuleFor(x => x.Hello).Equal("World"));
-        When(x => x.Child.Hello is not null, () => RuleFor(x => x.Child.Hello).Equal("World"));
     }
 }
