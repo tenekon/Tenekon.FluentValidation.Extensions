@@ -24,8 +24,6 @@ public interface IEditModelSubpathTrait
 
     EditContext? ActorEditContext { get; set; }
     object? Model { get; set; }
-    
-    bool IsActorEditContextComposable { set; }
 
     /// <summary>
     /// Sets <see cref="ActorEditContext"/> to <paramref name="editContext"/>.
@@ -46,8 +44,8 @@ public interface IEditModelSubpathTrait
         }
 
         if (!HasActorEditContextBeenSetExplicitly && Model is null) {
-            // We have no ActorEditContext and no Model
-            IsActorEditContextComposable = false;
+            // A. We have no ActorEditContext and no Model
+            // B. ActorEditContext is null
             return Task.CompletedTask;
         }
 

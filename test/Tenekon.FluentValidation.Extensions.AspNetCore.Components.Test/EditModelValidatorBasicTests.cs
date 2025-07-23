@@ -9,9 +9,10 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 #pragma warning disable xUnit1042
 public record ValidatorTestCase<TEditModelValidator>(
+    // ReSharper disable once NotAccessedPositionalProperty.Global
     string Name,
     Action<ComponentParameterCollectionBuilder<TEditModelValidator>, Type, object, EditContext> CustomizeParameters)
-    where TEditModelValidator : EditModelValidatorBase;
+    where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider;
 
 public static class EditModelValidatorBasicTestCases
 {
@@ -71,11 +72,8 @@ public class EditModelValidatorBasicTests : TestContext
     [Theory]
     [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
     public void ValidModel_ValidationReturnsTrue<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
-        where TEditModelValidator : EditModelValidatorBase
+        where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
-        var modelA = new { A = new List<string>() };
-        var field = FieldIdentifier.Create(() => modelA.A[0]);
-
         var model = new Model("World");
         var context = new EditContext(model);
 
@@ -98,7 +96,7 @@ public class EditModelValidatorBasicTests : TestContext
     [Theory]
     [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
     public void InvalidModel_ValidationReturnsFalse<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
-        where TEditModelValidator : EditModelValidatorBase
+        where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
         var model = new Model("WRONG");
         var context = new EditContext(model);
@@ -121,7 +119,7 @@ public class EditModelValidatorBasicTests : TestContext
     [Theory]
     [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
     public void ValidModel_DirectFieldValidationReturnsFalse<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
-        where TEditModelValidator : EditModelValidatorBase
+        where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
         var model = new Model("WRONG");
         var context = new EditContext(model);
@@ -134,8 +132,7 @@ public class EditModelValidatorBasicTests : TestContext
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Hello);
         var cutActorEditContex = cut.Instance.ActorEditContext;
         cutActorEditContex.NotifyFieldChanged(modelFieldIdentifier);
-        var isValid = context.IsValid(modelFieldIdentifier);
-        isValid.ShouldBeFalse();
+        context.IsValid(modelFieldIdentifier).ShouldBeFalse();
 
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
         counter.ShouldBe(expected: 1);
@@ -147,7 +144,7 @@ public class EditModelValidatorBasicTests : TestContext
     [Theory]
     [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
     public void ValidModel_NestedFieldValidationReturnsFalse<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
-        where TEditModelValidator : EditModelValidatorBase, IDisposable
+        where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
         var model = new Model { Child = { Hello = "WRONG" } };
         var context = new EditContext(model);
@@ -161,8 +158,7 @@ public class EditModelValidatorBasicTests : TestContext
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Child.Hello);
         var subPathActorEditContext = subPath.Instance.ActorEditContext;
         subPathActorEditContext.NotifyFieldChanged(modelFieldIdentifier);
-        var isValid = context.IsValid(modelFieldIdentifier);
-        isValid.ShouldBeFalse();
+        context.IsValid(modelFieldIdentifier).ShouldBeFalse();
 
         var cutActorEditContext = cut.Instance.ActorEditContext;
         RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContext, out _, out var cutActorEditContextCounter)

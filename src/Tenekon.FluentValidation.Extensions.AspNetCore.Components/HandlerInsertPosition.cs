@@ -1,7 +1,7 @@
 ﻿namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-internal enum HandlerAddingPosition
+internal enum HandlerInsertPosition
 {
-    Start,
-    End
+    Before,
+    After
 }

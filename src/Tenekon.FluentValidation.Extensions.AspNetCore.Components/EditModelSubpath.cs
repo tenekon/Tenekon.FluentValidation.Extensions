@@ -1,31 +1,11 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
-
-file static class EditContextAccessor
-{
-    private const string EditContextFieldStatesFieldName = "_fieldStates";
-
-    // We cannot use UnsafeAccessor and must work with reflection because part of the targeting signature is internal. :/
-    [field: AllowNull]
-    [field: MaybeNull]
-    public static FieldInfo EditContextFieldStatesMemberAccessor =>
-        field ??= typeof(EditContext).GetField(EditContextFieldStatesFieldName, BindingFlags.Instance | BindingFlags.NonPublic) ??
-            throw new NotImplementedException(
-                $"{nameof(EditContext)} does not implement the {EditContextFieldStatesFieldName} field anymore.");
-
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "<Properties>k__BackingField")]
-    public static extern ref EditContextProperties GetProperties(EditContext editContext);
-
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "<Model>k__BackingField")]
-    public static extern ref object GetModel(EditContext editContext);
-}
 
 // This component is highly specialized and tighly coupled with the internals of EditContext.
 // The component wants to have an actor edit context with field references of the ancestor edit context, except the event invocations,
@@ -33,62 +13,67 @@ file static class EditContextAccessor
 // CASCADING PARAMETER DEPENDENCIES:
 //   IEditModelValidator provided by EditModelValidatorSubpath or EditModelValidatorRootpath
 public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, IEditContextualComponentTrait, IEditModelSubpathTrait,
-    IHandlingParametersTransition
+    IParameterSetTransitionHandlerRegistryProvider
 {
-    static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
+    private static readonly object s_editContextModelSentinel = new();
+
+    public static readonly Func<IEditModelSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
 
     static EditModelSubpath()
     {
-        HandlingParametersTransitionAccessor<EditModelSubpath>.ParametersTransitionHandlerRegistry.RemoveHandler(
+        // Because Subpath component is NOT validating, but redirecting plain edit context validation requested notifications,
+        // we must not listen to validation requested notifications of root edit context, to prevent double notification.
+        ParameterSetTransitionHandlerRegistryProvider<EditModelSubpath>.ParameterSetTransitionHandlerRegistry.RemoveHandler(
             SubscribeToRootEditContextOnValidationRequestedAction);
 
-        HandlingParametersTransitionAccessor<EditModelSubpath>.ParametersTransitionHandlerRegistry.RegisterHandler(
-            CopyAncestorEditContextFieldReferencesToActorEditContext,
-            // If we want to make the registry API public, we should consider to make adding position relative to already added handlers,
-            // because now it is sufficient to insert the handler at the start to fulfill the contract required by the above handler.
-            HandlerAddingPosition.Start);
-
-        return;
-
-        static void CopyAncestorEditContextFieldReferencesToActorEditContext(ParametersTransition transition)
-        {
-            var component = (EditModelSubpath)transition.EditContextualComponentBase;
-            if (component._useEditContextSentinel) {
-                return;
-            }
-
-            var ancestor = transition.AncestorEditContextTransition;
-            var actor = transition.ActorEditContextTransition;
-
-            // We assume that actor edit context never changes only once at first transition.
-
-            if (ancestor.IsOldReferenceDifferentToNew || actor.IsFirstTransition) {
-                if (ancestor.IsNewNonNull && actor.IsNewNonNull) {
-                    // ISSUE:
-                    //  The problem is, that root edit context may become the ancestor edit context, then the ancestor edit references of
-                    //  field states and properties are copied to new actor edit context, thus it is problematic to occupy counter-based
-                    //  properties before and then deoccupy counter-based properties after the copying.
-                    // PROPOSAL (IMPLEMETED):
-                    //  Copy field references before any mutation of any edit context on every parameters transition.
-
-                    // Cascade EditContext._fieldStates
-                    var editContextFieldStatesMemberAccessor = EditContextAccessor.EditContextFieldStatesMemberAccessor;
-                    var fieldStates = editContextFieldStatesMemberAccessor.GetValue(ancestor.New);
-                    editContextFieldStatesMemberAccessor.SetValue(actor.New, fieldStates);
-
-                    // Cascade EditContext.Properties
-                    EditContextAccessor.GetProperties(actor.New) = EditContextAccessor.GetProperties(ancestor.New);
-
-                    // Cascade EditContext.Model
-                    EditContextAccessor.GetModel(actor.New) = EditContextAccessor.GetModel(ancestor.New);
-
-                    actor.InvalidateCache();
-                }
-            }
-        }
+        ParameterSetTransitionHandlerRegistryProvider<EditModelSubpath>.ParameterSetTransitionHandlerRegistry.RegisterHandler(
+            CopyAncestorEditContextFieldReferencesToActorEditContextAction,
+            // ISSUE:
+            //  The problem is, that root edit context may become the ancestor edit context, then the ancestor edit references of
+            //  field states and properties are copied to new actor edit context, thus it is problematic to occupy counter-based
+            //  properties before and then deoccupy counter-based properties after the copying.
+            // PROPOSAL (IMPLEMETED):
+            //  Copy field references before any mutation of any edit context on every parameters transition.
+            //
+            // TODO: If we want to make the registry API public, we should consider to make adding position relative to already added
+            //  handlers, because now it is sufficient to insert the handler at the start to fulfill the contract required by the above
+            //  handler.
+            HandlerInsertPosition.After,
+            SetProvidedEditContexts);
     }
 
-    private static readonly object s_modelSentinel = new();
+    static ParameterSetTransitionHandlerRegistry IParameterSetTransitionHandlerRegistryProvider.ParameterSetTransitionHandlerRegistry {
+        get;
+    } = new();
+
+    private static Action<EditContextualComponentBaseParameterSetTransition>
+        CopyAncestorEditContextFieldReferencesToActorEditContextAction { get; } = static transition => {
+        if (transition.IsDisposing) {
+            return;
+        }
+
+        if (transition.ActorEditContext.IsNewNull) {
+            var component = Unsafe.As<EditModelSubpath>(transition.Component);
+            var lastTransition = Unsafe.As<EditModelSubpathParameterSetTransition>(component.LastParameterSetTransition);
+            if (lastTransition is { IsUsingImplicitActorEditContext: true, AncestorEditContext.IsNewSame: true }) {
+                transition.ActorEditContext.New = transition.ActorEditContext.Old;
+            } else {
+                // We must re-create the sentinel, to allow correct deinitialiazation of possible non-null old ancestor edit context
+                transition.ActorEditContext.New = CreateEditContextSentinel();
+            }
+
+            var transition2 = Unsafe.As<EditModelSubpathParameterSetTransition>(transition);
+            transition2.IsUsingImplicitActorEditContext = true;
+        }
+
+        if (transition.ActorEditContext.IsNewDifferent) {
+            ParametersTransitioners.CopyAncestorEditContextFieldReferencesToActorEditContextAction(transition);
+        }
+    };
+
+    Func<IEditModelSubpathTrait.ErrorContext, Exception> IEditModelSubpathTrait.ExceptionFactory => DefaultExceptionFactory;
+
+    private static EditContext CreateEditContextSentinel() => new(s_editContextModelSentinel);
 
     private static Exception DefaultExceptionFactoryImpl(IEditModelSubpathTrait.ErrorContext context) =>
         context.Identifier switch {
@@ -97,14 +82,8 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
             _ => IEditModelSubpathTrait.DefaultExceptionFactory(context)
         };
 
-    public static readonly Func<IEditModelSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
-
-    Func<IEditModelSubpathTrait.ErrorContext, Exception> IEditModelSubpathTrait.ExceptionFactory => DefaultExceptionFactory;
-
-    private EditContext? ActorEditContextSentinel => field ??= new EditContext(s_modelSentinel);
     private Dictionary<ModelIdentifier, FieldIdentifier>? _subModelAccessPathMap;
     private ModelIdentifier _ancestorEditContextModelIdentifier;
-    private bool _useEditContextSentinel;
     private IEditModelValidationNotifier? _editModelValidationNotifier;
 
     [CascadingParameter]
@@ -132,15 +111,10 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
     }
 
     bool IEditModelSubpathTrait.HasActorEditContextBeenSetExplicitly { get; set; }
-    object? IEditModelSubpathTrait.Model { get; set; }
     EditContext? IEditModelSubpathTrait.ActorEditContext { get; set; }
+    object? IEditModelSubpathTrait.Model { get; set; }
 
-    EditContext? IEditContextualComponentTrait.ActorEditContext =>
-        ((IEditModelSubpathTrait)this).ActorEditContext ?? ActorEditContextSentinel;
-
-    bool IEditModelSubpathTrait.IsActorEditContextComposable {
-        set => _useEditContextSentinel = value;
-    }
+    EditContext? IEditContextualComponentTrait.ActorEditContext => ((IEditModelSubpathTrait)this).ActorEditContext;
 
     [Parameter]
     public Expression<Func<object>>[]? Routes { get; set; }
@@ -156,7 +130,7 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
         await base.OnParametersTransitioningAsync();
 
         if (RoutesOwningEditModelValidationNotifier is { } validationNotifier &&
-            validationNotifier.IsInScope(LastParametersTransition.RootEditContextTransition.New)) {
+            validationNotifier.IsInScope(LastParameterSetTransition.RootEditContext.New)) {
             _editModelValidationNotifier = RoutesOwningEditModelValidationNotifier;
         } else {
             _editModelValidationNotifier = AncestorEditContextValidationNotifier;
@@ -164,8 +138,8 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
 
         InitializeModelRoutes();
 
-        var ancestorEditContextTransition = LastParametersTransition.AncestorEditContextTransition;
-        if (ancestorEditContextTransition.IsOldReferenceEqualsToNew) {
+        var ancestorEditContextTransition = LastParameterSetTransition.AncestorEditContext;
+        if (ancestorEditContextTransition.IsNewSame) {
             _ancestorEditContextModelIdentifier = new ModelIdentifier(ancestorEditContextTransition.New.Model);
         }
 
@@ -193,6 +167,9 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
             }
         }
     }
+
+    internal override EditContextualComponentBaseParameterSetTransition CreateParameterSetTransition() =>
+        new EditModelSubpathParameterSetTransition();
 
     protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
@@ -236,7 +213,7 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
         _editModelValidationNotifier.NotifyNestedFieldValidationRequested(nestedFieldValidationRequestedArgs);
 
         notifyValidationStateChanged:
-        LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
+        LastParameterSetTransition.ActorEditContext.New.NotifyValidationStateChanged();
     }
 
     private class AncestorEditContextValidatdionNotifier(EditModelSubpath component) : IEditModelValidationNotifier
@@ -244,13 +221,13 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
         public bool IsInScope(EditContext candidate) => true;
 
         public void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args) =>
-            component.LastParametersTransition.AncestorEditContextTransition.New.Validate();
+            component.LastParameterSetTransition.AncestorEditContext.New.Validate();
 
         public void NotifyDirectFieldValidationRequested(EditModelDirectFieldValidationRequestedArgs args) =>
-            component.LastParametersTransition.AncestorEditContextTransition.New.NotifyFieldChanged(args.FieldIdentifier);
+            component.LastParameterSetTransition.AncestorEditContext.New.NotifyFieldChanged(args.FieldIdentifier);
 
         public void NotifyNestedFieldValidationRequested(EditModelNestedFieldValidationRequestedArgs args) =>
             // Align with default behavior: delegate to ancestor edit context and its validators, which may throw an exception.
-            component.LastParametersTransition.AncestorEditContextTransition.New.NotifyFieldChanged(args.SubFieldIdentifier);
+            component.LastParameterSetTransition.AncestorEditContext.New.NotifyFieldChanged(args.SubFieldIdentifier);
     }
 }

@@ -5,8 +5,16 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public class EditModelValidatorSubpath : EditModelValidatorBase, IEditContextualComponentTrait, IEditModelValidatorSubpathTrait
+public class EditModelValidatorSubpath : EditModelValidatorBase<EditModelValidatorSubpath>, IEditContextualComponentTrait,
+    IEditModelValidatorSubpathTrait, IParameterSetTransitionHandlerRegistryProvider
 {
+    public static readonly Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
+        DefaultExceptionFactoryImpl;
+    
+    static ParameterSetTransitionHandlerRegistry IParameterSetTransitionHandlerRegistryProvider.ParameterSetTransitionHandlerRegistry {
+        get;
+    } = new();
+
     private static Exception DefaultExceptionFactoryImpl(IEditModelValidatorSubpathTrait.ErrorContext context) =>
         context.Identifier switch {
             IEditModelValidatorSubpathTrait.ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
@@ -15,9 +23,6 @@ public class EditModelValidatorSubpath : EditModelValidatorBase, IEditContextual
                 $"{context.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter."),
             _ => IEditModelValidatorSubpathTrait.DefaultExceptionFactory(context)
         };
-
-    public static readonly Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
-        DefaultExceptionFactoryImpl;
 
     Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> IEditModelValidatorSubpathTrait.ExceptionFactory =>
         DefaultExceptionFactory;

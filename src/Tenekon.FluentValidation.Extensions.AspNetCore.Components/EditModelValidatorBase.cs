@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using FluentValidation;
 using FluentValidation.Internal;
 using FluentValidation.Results;
@@ -11,11 +12,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public abstract class EditModelValidatorBase : EditContextualComponentBase<EditModelValidatorBase>, IEditModelValidator,
-    IEditModelValidationNotifier, IHandlingParametersTransition
+public abstract class EditModelValidatorBase<TDerived> : EditContextualComponentBase<TDerived>, IEditModelValidator,
+    IEditModelValidationNotifier where TDerived : EditModelValidatorBase<TDerived>, IParameterSetTransitionHandlerRegistryProvider
 {
-    static ParametersTransitionHandlerRegistry IHandlingParametersTransition.ParametersTransitionHandlerRegistry { get; } = new();
-
     private readonly RenderFragment _renderEditModelValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
     private readonly RenderFragment<RenderFragment?> _renderEditModelSubpathFragment;
@@ -50,7 +49,11 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
     private IServiceProvider? ServiceProvider { get; set; }
 
     [Inject]
-    private ILogger<EditModelValidatorBase>? Logger { get; set; }
+    private ILogger<EditModelValidatorBase<TDerived>>? Logger { get; set; }
+
+    internal override EditModelValidatorBaseParameterSetTransition LastParameterSetTransition =>
+        Unsafe.As<EditModelValidatorBaseParameterSetTransition>(
+            Unsafe.As<ILastParameterSetTransitionTrait>(this).LastParameterSetTransition);
 
     [Parameter]
     public Type? ValidatorType { get; set; }
@@ -95,6 +98,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
 
     private void RenderEditModelValidatorContent(RenderTreeBuilder builder)
     {
+        // PROPOSAL: Isolate the child content by a new edit context (see EditModelSubpath)
         if (Routes is not null) {
             builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelSubpathFragment(ChildContent));
         } else {
@@ -153,9 +157,25 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
 
     internal override async Task OnParametersTransitioningAsync() => await base.OnParametersTransitioningAsync();
 
+    internal override EditModelValidatorBaseParameterSetTransition CreateParameterSetTransition() => new();
+
+    internal override void ConfigureParameterSetTransition(EditContextualComponentBaseParameterSetTransition transition)
+    {
+        base.ConfigureParameterSetTransition(transition);
+        var transition2 = Unsafe.As<EditModelValidatorBaseParameterSetTransition>(transition);
+        transition2.Routes.Old = LastParameterSetTransition.Routes.NewOrNull;
+        transition2.Routes.New = Routes;
+    }
+
+    internal override void ConfigureDisposalParameterSetTransition(EditContextualComponentBaseParameterSetTransition transition)
+    {
+        base.ConfigureDisposalParameterSetTransition(transition);
+        var transition2 = Unsafe.As<EditModelValidatorBaseParameterSetTransition>(transition);
+        transition2.ActorEditContext.Old = LastParameterSetTransition.ActorEditContext.NewOrNull;
+    }
+
     bool IEditModelValidationNotifier.IsInScope(EditContext candidate) =>
-        (LastParametersTransition.RootEditContextTransition.TryGetNew(out var rootEditContext) &&
-            ReferenceEquals(rootEditContext, candidate)) ||
+        (LastParameterSetTransition.RootEditContext.TryGetNew(out var rootEditContext) && ReferenceEquals(rootEditContext, candidate)) ||
         (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(candidate, out var candidateRootEditContext) &&
             ReferenceEquals(rootEditContext, candidateRootEditContext));
 
@@ -176,12 +196,12 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
         _actorEditContextValidationMessageStore?.Add(fieldIdentifier, errorMessage);
     }
 
-    void IEditModelValidator.ValidateFullModel() => LastParametersTransition.RootEditContextTransition.New.Validate();
+    void IEditModelValidator.ValidateFullModel() => LastParameterSetTransition.RootEditContext.New.Validate();
 
     private void ValidateModel()
     {
         Debug.Assert(_validator is not null);
-        var actorEditContext = LastParametersTransition.ActorEditContextTransition.New;
+        var actorEditContext = LastParameterSetTransition.ActorEditContext.New;
 
         var validationContext = ValidationContext<object>.CreateWithOptions(actorEditContext.Model, _applyValidationStrategyAction);
         ConfigureValidationContext(new ConfigueValidationContextArguments(validationContext));
@@ -212,7 +232,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
         // An additional safety net: To prevent a potential second invocation of ValidateModel(), we return early if the original source of
         // the event is reference-equal to the root edit context, since that instance already handles OnValidationRequested for
         // the root edit context.
-        if (ReferenceEquals(LastParametersTransition.RootEditContextTransition.NewOrNull, args.OriginalSource)) {
+        if (ReferenceEquals(LastParameterSetTransition.RootEditContext.NewOrNull, args.OriginalSource)) {
             return;
         }
 
@@ -261,7 +281,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
             AddValidationMessageToStores(fieldIdentifier, error.ErrorMessage);
         }
 
-        LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
+        LastParameterSetTransition.ActorEditContext.New.NotifyValidationStateChanged();
         return;
 
         void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
@@ -299,7 +319,7 @@ public abstract class EditModelValidatorBase : EditContextualComponentBase<EditM
             AddValidationMessageToStores(subFieldIdentifier, error.ErrorMessage);
         }
 
-        LastParametersTransition.ActorEditContextTransition.New.NotifyValidationStateChanged();
+        LastParameterSetTransition.ActorEditContext.New.NotifyValidationStateChanged();
         return;
 
         void ApplyValidationStrategy2(ValidationStrategy<object> validationStrategy)
