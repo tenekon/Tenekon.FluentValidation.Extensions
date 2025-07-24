@@ -67,7 +67,7 @@ There exists a few established Blazor integrations for FluentValidation:
 2. Blazorise.FluentValidation
    ⚠️ generalized, complex, very opiniated approaches, no edit context nesting*1
 3. vNext.BlazorComponents.FluentValidation
-   ✅ solid, but desired default behaviour having AssemblyScannerValidatorFactory as fallback in case of ServiceProviderValidatorFactory results into null-validator?, no edit context nesting*1
+   ✅ solid, but is default behaviour having AssemblyScannerValidatorFactory as fallback in case of ServiceProviderValidatorFactory results into null-validator desired?, no edit context nesting*1
 
 *1: "no edit context nesting" means you have to work with one and the same edit context when using the library-authored FluentValidation-aware validator component across the wohle component graph beneath (inside ChildContent RenderFragment) the EditForm (or similiar).
 

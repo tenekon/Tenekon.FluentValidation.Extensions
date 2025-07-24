@@ -36,6 +36,18 @@ internal static class ParametersTransitioners
 
         if (ancestor.IsNewDifferent || transition.IsFirstTransition) {
             if (ancestor.IsNewNonNull && actor.IsNewNonNull) {
+                /* TODO: We MUST NOT cascade field states and properties, because we do not want to have shared field states,
+                 * between different validation contexts, so it becomes like this:
+                 * <EditForm ...> Context A
+                 *   <EditModelSubpath> // Context B - for demonstation purposes
+                 *     <EditModelValidatorRootpath .../> // Writes to A & B
+                 *     <EditModelSubpath> // Context C
+                 *       <EditModelValidatorRootpath .../> Writes to A & C
+                 *     </EditModelSubpath>
+                 *   </EditModelSubpath>
+                 * </EditForm>
+                 */
+
                 // Cascade EditContext._fieldStates
                 var editContextFieldStatesMemberAccessor = EditContextAccessor.EditContextFieldStatesMemberAccessor;
                 var fieldStates = editContextFieldStatesMemberAccessor.GetValue(ancestor.New);
