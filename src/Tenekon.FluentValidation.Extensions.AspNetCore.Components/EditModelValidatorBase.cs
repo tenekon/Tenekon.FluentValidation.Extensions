@@ -31,7 +31,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 
     private readonly RenderFragment _renderEditModelValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
-    private readonly RenderFragment<RenderFragment?> _renderEditModelSubpathFragment;
+    private readonly RenderFragment _renderEditModelSubpathWithRoutesFragment;
     private readonly Action<ValidationStrategy<object>> _applyValidationStrategyAction;
     private readonly Action<object> _captureEditModelSubpathReferenceAction;
     private bool _havingValidatorSetExplicitly;
@@ -46,7 +46,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     {
         _renderEditModelValidatorContent = RenderEditModelValidatorContent;
         _renderEditContextualComponentFragment = childContent => builder => RenderEditContextualComponent(builder, childContent);
-        _renderEditModelSubpathFragment = childContent => builder => RenderEditModelSubpath(builder, childContent);
+        _renderEditModelSubpathWithRoutesFragment = builder => RenderEditModelSubpathWithRoutes(builder, ChildContent);
         _applyValidationStrategyAction = ApplyValidationStrategy;
         _captureEditModelSubpathReferenceAction = CaptureEditModelSubpathReference;
         return;
@@ -110,23 +110,14 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     [Parameter]
     public Expression<Func<object>>[]? Routes { get; set; }
 
-    private void RenderEditModelSubpath(RenderTreeBuilder builder, RenderFragment? childContent)
+    private void RenderEditModelSubpathWithRoutes(RenderTreeBuilder builder, RenderFragment? childContent)
     {
         builder.OpenComponent<EditModelSubpath>(sequence: 0);
         builder.AddComponentParameter(sequence: 1, nameof(EditModelSubpath.Routes), Routes);
         builder.AddComponentParameter(sequence: 2, nameof(ChildContent), childContent);
+        builder.AddComponentParameter(sequence: 3, nameof(EditModelSubpath.Ancestor), Ancestor.DirectAncestor);
         builder.AddComponentReferenceCapture(3, _captureEditModelSubpathReferenceAction);
         builder.CloseComponent();
-    }
-
-    private void RenderEditModelValidatorContent(RenderTreeBuilder builder)
-    {
-        // PROPOSAL: Isolate the child content by a new edit context (see EditModelSubpath)
-        if (Routes is not null) {
-            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelSubpathFragment(ChildContent));
-        } else {
-            builder.AddContent(sequence: 1, _renderEditContextualComponentFragment, ChildContent);
-        }
     }
 
     private void RenderEditModelValidator(RenderTreeBuilder builder, RenderFragment childContent)
@@ -137,6 +128,19 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         builder.AddComponentParameter(sequence: 3, nameof(CascadingValue<>.ChildContent), childContent);
         builder.CloseComponent();
     }
+
+    private void RenderEditModelValidatorContent(RenderTreeBuilder builder)
+    {
+        // PROPOSAL: Isolate the child content by a new edit context (see EditModelSubpath)
+        if (Routes is not null) {
+            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelSubpathWithRoutesFragment);
+        } else {
+            builder.AddContent(sequence: 1, _renderEditContextualComponentFragment, ChildContent);
+        }
+    }
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder) =>
+        RenderEditModelValidator(builder, _renderEditModelValidatorContent);
 
     private void ApplyValidationStrategy(ValidationStrategy<object> validationStrategy) =>
         ConfigureValidationStrategy?.Invoke(validationStrategy);
@@ -197,10 +201,15 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         transition2.ActorEditContext.Old = LastParameterSetTransition.ActorEditContext.NewOrNull;
     }
 
-    bool IEditModelValidationNotifier.IsInScope(EditContext candidate) =>
-        (LastParameterSetTransition.RootEditContext.TryGetNew(out var rootEditContext) && ReferenceEquals(rootEditContext, candidate)) ||
-        (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(candidate, out var candidateRootEditContext) &&
-            ReferenceEquals(rootEditContext, candidateRootEditContext));
+    void IEditModelValidationNotifier.EvaluateValidationScope(ValidationScopeContext candidate)
+    {
+        candidate.IsWithinScope =
+            (LastParameterSetTransition.RootEditContext.TryGetNew(out var rootEditContext) &&
+                ReferenceEquals(rootEditContext, candidate.EditContext)) ||
+            (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(
+                candidate.EditContext,
+                out var candidateRootEditContext) && ReferenceEquals(rootEditContext, candidateRootEditContext));
+    }
 
     private void ClearValidationMessageStores()
     {
@@ -359,9 +368,6 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 
     void IEditModelValidator.ValidateNestedField(FieldIdentifier fullFieldPath, FieldIdentifier subFieldIdentifier) =>
         ValidateNestedField(fullFieldPath, subFieldIdentifier);
-
-    protected override void BuildRenderTree(RenderTreeBuilder builder) =>
-        RenderEditModelValidator(builder, _renderEditModelValidatorContent);
 
     private void DeinitalizeServiceScopeSource()
     {

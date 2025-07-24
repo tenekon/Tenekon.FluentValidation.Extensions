@@ -6,8 +6,6 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 public class EditModelValidatorRootpath : EditModelValidatorBase<EditModelValidatorRootpath>, IEditContextualComponentTrait,
     IParameterSetTransitionHandlerRegistryProvider
 {
-    private static readonly object s_editContextModelSentinel = new();
-
     static EditModelValidatorRootpath()
     {
         ParameterSetTransitionHandlerRegistryProvider<EditModelValidatorRootpath>.ParameterSetTransitionHandlerRegistry.RegisterHandler(
@@ -27,23 +25,26 @@ public class EditModelValidatorRootpath : EditModelValidatorBase<EditModelValida
         }
 
         var transition2 = Unsafe.As<EditModelValidatorBaseParameterSetTransition>(transition);
+        var ancestorEditContextTransition = transition2.AncestorEditContext;
 
-        if (transition2.AncestorEditContext.IsNewDifferent || transition2.ChildContent.IsNewNullStateChanged ||
+        if (ancestorEditContextTransition.IsNewDifferent || transition2.ChildContent.IsNewNullStateChanged ||
             transition2.Routes.IsNewNullStateChanged) {
             // We only isolate actor edit context if ChildContent is null and Routes are not, because if Routes is not null,
-            // then Subpath already provides scoped edit context.
-            if (transition2.AncestorEditContext.IsNewNonNull && transition2.ChildContent.IsNewNonNull && transition2.Routes.IsNewNull) {
+            // then Subpath already provides event-isolated edit context.
+            if (ancestorEditContextTransition.IsNewNonNull && transition2.ChildContent.IsNewNonNull && transition2.Routes.IsNewNull) {
+                var actorEditContextTransition = transition2.ActorEditContext;
                 // We must re-create the sentinel, to allow correct deinitialiazation of possible non-null old ancestor edit context
-                var actorEditContext = CreateEditContextSentinel();
-                transition.ActorEditContext.New = actorEditContext;
-                ParametersTransitioners.CopyAncestorEditContextFieldReferencesToActorEditContextAction(transition);
-            }
+                var newActorEditContext = new EditContext(ancestorEditContextTransition.New.Model);
+                actorEditContextTransition.New = newActorEditContext;
+
+                /* REVISE: Once Rootpath is becomes internally a direct descendant, we must cascade field references of the ancestor to
+                 * the actor edit context.
+                 */
+            } // else { /* Do not set any actor edit context, thus actor edit context becomes ancestor edit context. */ }  
         } else if (transition2.ActorEditContext.IsOldNonNull) {
             transition.ActorEditContext.New = transition2.ActorEditContext.Old;
         }
     };
-
-    private static EditContext CreateEditContextSentinel() => new(s_editContextModelSentinel);
 
     EditContext? IEditContextualComponentTrait.ActorEditContext => AncestorEditContext;
 

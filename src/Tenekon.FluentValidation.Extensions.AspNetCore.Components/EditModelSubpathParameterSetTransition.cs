@@ -2,5 +2,11 @@
 
 internal class EditModelSubpathParameterSetTransition : EditContextualComponentBaseParameterSetTransition
 {
-    public bool IsUsingImplicitActorEditContext { get; set; }
+    private ClassValueTransition<IEditModelValidationNotifier> RoutesOwningEditModelValidationNotifier =>
+        field ??= new ClassValueTransition<IEditModelValidationNotifier>() { Revisioner = this };
+    
+    /// <summary>
+    /// Indiactes that the current transition used a self-created actor edit context derived from ancestor edit context.
+    /// </summary>
+    public bool IsActorEditContextAncestorDerived { get; set; }
 }

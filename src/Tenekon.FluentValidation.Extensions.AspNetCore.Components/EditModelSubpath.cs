@@ -15,8 +15,6 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, IEditContextualComponentTrait, IEditModelSubpathTrait,
     IParameterSetTransitionHandlerRegistryProvider
 {
-    private static readonly object s_editContextModelSentinel = new();
-
     public static readonly Func<IEditModelSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
 
     static EditModelSubpath()
@@ -52,28 +50,39 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
             return;
         }
 
-        if (transition.ActorEditContext.IsNewNull) {
-            var component = Unsafe.As<EditModelSubpath>(transition.Component);
+        var component = Unsafe.As<EditModelSubpath>(transition.Component);
+        var actorEditContextTransition = transition.ActorEditContext;
+        var ancestorEditContextTransition = transition.AncestorEditContext;
+
+        if (actorEditContextTransition.IsNewNull) {
             var lastTransition = Unsafe.As<EditModelSubpathParameterSetTransition>(component.LastParameterSetTransition);
-            if (lastTransition is { IsUsingImplicitActorEditContext: true, AncestorEditContext.IsNewSame: true }) {
-                transition.ActorEditContext.New = transition.ActorEditContext.Old;
+            if (lastTransition is { IsActorEditContextAncestorDerived: true } && ancestorEditContextTransition.IsNewSame) {
+                // Reuse old actor edit context if it was already derived from the ancestor and the ancestor didn't change.
+                actorEditContextTransition.New = actorEditContextTransition.Old;
             } else {
-                // We must re-create the sentinel, to allow correct deinitialiazation of possible non-null old ancestor edit context
-                transition.ActorEditContext.New = CreateEditContextSentinel();
+                // Create a new actor edit context based on the ancestor model.
+                var newActorEditContext = new EditContext(ancestorEditContextTransition.New.Model);
+                actorEditContextTransition.New = newActorEditContext;
+
+                // Only copy field references if the ancestor is the direct ancestor.
+                if (component.Ancestor is { IsDirectAncestor: true }) {
+                    // Cascade EditContext._fieldStates
+                    var editContextFieldStatesMemberAccessor = EditContextAccessor.EditContextFieldStatesMemberAccessor;
+                    var fieldStates = editContextFieldStatesMemberAccessor.GetValue(ancestorEditContextTransition.New);
+                    editContextFieldStatesMemberAccessor.SetValue(newActorEditContext, fieldStates);
+
+                    // Cascade EditContext.Properties
+                    EditContextAccessor.GetProperties(newActorEditContext) =
+                        EditContextAccessor.GetProperties(ancestorEditContextTransition.New);
+                }
             }
 
             var transition2 = Unsafe.As<EditModelSubpathParameterSetTransition>(transition);
-            transition2.IsUsingImplicitActorEditContext = true;
-        }
-
-        if (transition.ActorEditContext.IsNewDifferent) {
-            ParametersTransitioners.CopyAncestorEditContextFieldReferencesToActorEditContextAction(transition);
+            transition2.IsActorEditContextAncestorDerived = true;
         }
     };
 
     Func<IEditModelSubpathTrait.ErrorContext, Exception> IEditModelSubpathTrait.ExceptionFactory => DefaultExceptionFactory;
-
-    private static EditContext CreateEditContextSentinel() => new(s_editContextModelSentinel);
 
     private static Exception DefaultExceptionFactoryImpl(IEditModelSubpathTrait.ErrorContext context) =>
         context.Identifier switch {
@@ -91,8 +100,11 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
 
     [field: AllowNull]
     [field: MaybeNull]
-    private AncestorEditContextValidatdionNotifier AncestorEditContextValidationNotifier =>
-        field ??= new AncestorEditContextValidatdionNotifier(this);
+    private AncestorEditContextValidationNotifierImpl AncestorEditContextValidationNotifier =>
+        field ??= new AncestorEditContextValidationNotifierImpl(this);
+
+    [Parameter]
+    public Ancestor? Ancestor { get; set; }
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties
@@ -129,9 +141,14 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
     {
         await base.OnParametersTransitioningAsync();
 
-        if (RoutesOwningEditModelValidationNotifier is { } validationNotifier &&
-            validationNotifier.IsInScope(LastParameterSetTransition.RootEditContext.New)) {
-            _editModelValidationNotifier = RoutesOwningEditModelValidationNotifier;
+        if (RoutesOwningEditModelValidationNotifier is { } validationNotifier) {
+            var validationScopeContext = new ValidationScopeContext(LastParameterSetTransition.RootEditContext.New);
+            validationNotifier.EvaluateValidationScope(validationScopeContext);
+            if (validationScopeContext.IsWithinScope) {
+                _editModelValidationNotifier = RoutesOwningEditModelValidationNotifier;
+            } else {
+                _editModelValidationNotifier = AncestorEditContextValidationNotifier;
+            }
         } else {
             _editModelValidationNotifier = AncestorEditContextValidationNotifier;
         }
@@ -216,9 +233,9 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
         LastParameterSetTransition.ActorEditContext.New.NotifyValidationStateChanged();
     }
 
-    private class AncestorEditContextValidatdionNotifier(EditModelSubpath component) : IEditModelValidationNotifier
+    private class AncestorEditContextValidationNotifierImpl(EditModelSubpath component) : IEditModelValidationNotifier
     {
-        public bool IsInScope(EditContext candidate) => true;
+        public void EvaluateValidationScope(ValidationScopeContext candidate) => candidate.IsDirectDescendant = true;
 
         public void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args) =>
             component.LastParameterSetTransition.AncestorEditContext.New.Validate();

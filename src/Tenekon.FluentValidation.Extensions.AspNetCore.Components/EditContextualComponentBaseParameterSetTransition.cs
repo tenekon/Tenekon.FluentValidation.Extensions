@@ -41,33 +41,25 @@ internal class EditContextualComponentBaseParameterSetTransition : IRevisioner
 
     [field: AllowNull]
     [field: MaybeNull]
-    public virtual EditContextTransition RootEditContext {
-        get => field ??= new EditContextTransition() { Revisioner = this };
-    }
+    public virtual EditContextTransition RootEditContext => field ??= new EditContextTransition() { Revisioner = this };
 
     [field: AllowNull]
     [field: MaybeNull]
-    public virtual EditContextTransition AncestorEditContext {
-        get => field ??= new EditContextTransition() { Revisioner = this };
-    }
+    public virtual EditContextTransition AncestorEditContext => field ??= new EditContextTransition() { Revisioner = this };
 
     [field: AllowNull]
     [field: MaybeNull]
-    public virtual EditContextTransition ActorEditContext {
-        get => field ??= new EditContextTransition() { Revisioner = this };
-    }
+    public virtual EditContextTransition ActorEditContext => field ??= new EditContextTransition() { Revisioner = this };
 
     [field: AllowNull]
     [field: MaybeNull]
-    public virtual ClassValueTransition<RenderFragment> ChildContent {
-        get => field ??= new ClassValueTransition<RenderFragment>() { Revisioner = this };
-    }
-    
+    public virtual ClassValueTransition<RenderFragment> ChildContent =>
+        field ??= new ClassValueTransition<RenderFragment>() { Revisioner = this };
+
     [field: AllowNull]
     [field: MaybeNull]
-    public virtual ClassValueTransition<Expression<Func<object>>[]> Routes {
-        get => field ??= new ClassValueTransition<Expression<Func<object>>[]>() { Revisioner = this };
-    }
+    public virtual ClassValueTransition<Expression<Func<object>>[]> Routes =>
+        field ??= new ClassValueTransition<Expression<Func<object>>[]>() { Revisioner = this };
 
     public bool IsNewEditContextOfActorAndRootNonNullAndDifferent {
         get {
