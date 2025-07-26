@@ -2,7 +2,7 @@ using FluentValidation;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public class ConfigueValidationContextArguments
+internal class ConfigueValidationContextArguments
 {
     public ValidationContext<object> ValidationContext { get; }
 

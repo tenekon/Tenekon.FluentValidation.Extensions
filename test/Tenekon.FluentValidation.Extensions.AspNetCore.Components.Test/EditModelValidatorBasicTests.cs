@@ -85,11 +85,11 @@ public class EditModelValidatorBasicTests : TestContext
 
 
         var cutActorEditContex = cut.Instance.ActorEditContext;
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
         counter.ShouldBe(expected: 1);
 
         DisposeComponents();
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(context, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(context, out _).ShouldBeFalse();
     }
 
     [Theory]
@@ -108,11 +108,11 @@ public class EditModelValidatorBasicTests : TestContext
         context.Validate().ShouldBeFalse();
 
         var cutActorEditContex = cut.Instance.ActorEditContext;
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
         counter.ShouldBe(expected: 1);
 
         DisposeComponents();
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
     }
 
     [Theory]
@@ -133,11 +133,11 @@ public class EditModelValidatorBasicTests : TestContext
         cutActorEditContex.NotifyFieldChanged(modelFieldIdentifier);
         context.IsValid(modelFieldIdentifier).ShouldBeFalse();
 
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
         counter.ShouldBe(expected: 1);
 
         DisposeComponents();
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
     }
 
     [Theory]
@@ -160,17 +160,17 @@ public class EditModelValidatorBasicTests : TestContext
         context.IsValid(modelFieldIdentifier).ShouldBeFalse();
 
         var cutActorEditContext = cut.Instance.ActorEditContext;
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContext, out _, out var cutActorEditContextCounter)
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContext, out _, out var cutActorEditContextCounter)
             .ShouldBeTrue();
         cutActorEditContextCounter.ShouldBe(expected: 2);
 
-        RootEditContextPropertyAccessorHolder.s_accessor
+        EditContextPropertyAccessor.s_rootEditContext
             .TryGetPropertyValue(subPathActorEditContext, out _, out var subPathActorEditContextCounter)
             .ShouldBeTrue();
         subPathActorEditContextCounter.ShouldBe(expected: 2);
 
         DisposeComponents();
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(cutActorEditContext, out _).ShouldBeFalse();
-        RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(subPathActorEditContext, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContext, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(subPathActorEditContext, out _).ShouldBeFalse();
     }
 }

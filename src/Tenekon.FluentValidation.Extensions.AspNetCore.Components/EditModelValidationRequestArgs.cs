@@ -1,6 +1,6 @@
 ﻿namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public abstract class EditModelValidationRequestArgs
+internal abstract class EditModelValidationRequestArgs
 {
     internal EditModelValidationRequestArgs(object source, object originalSource)
     {

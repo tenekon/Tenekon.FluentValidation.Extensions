@@ -37,7 +37,7 @@ public class EditModelValidatorRootpath : EditModelValidatorBase<EditModelValida
                 var newActorEditContext = new EditContext(ancestorEditContextTransition.New.Model);
                 actorEditContextTransition.New = newActorEditContext;
 
-                /* REVISE: Once Rootpath is becomes internally a direct descendant, we must cascade field references of the ancestor to
+                /* REVISE: Once Rootpath becomes internally a direct descendant, we must cascade field references of the ancestor to
                  * the actor edit context.
                  */
             } // else { /* Do not set any actor edit context, thus actor edit context becomes ancestor edit context. */ }  

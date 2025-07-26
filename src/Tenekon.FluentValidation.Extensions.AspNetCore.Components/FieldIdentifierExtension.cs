@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public static class FieldIdentifierExtension
+internal static class FieldIdentifierExtension
 {
     /// <summary>
     ///     Because <see cref="FieldIdentifier.Create{TField}(Expression{Func{TField}})" /> only estimate one-level deep field names and its

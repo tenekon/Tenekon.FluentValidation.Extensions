@@ -8,7 +8,7 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 public class EditModelValidatorSubpath : EditModelValidatorBase<EditModelValidatorSubpath>, IEditContextualComponentTrait,
     IEditModelValidatorSubpathTrait, IParameterSetTransitionHandlerRegistryProvider
 {
-    public static readonly Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
+    internal static readonly Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> s_defaultExceptionFactory =
         DefaultExceptionFactoryImpl;
 
     static ParameterSetTransitionHandlerRegistry IParameterSetTransitionHandlerRegistryProvider.ParameterSetTransitionHandlerRegistry {
@@ -23,7 +23,7 @@ public class EditModelValidatorSubpath : EditModelValidatorBase<EditModelValidat
         };
 
     Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> IEditModelValidatorSubpathTrait.ExceptionFactory =>
-        DefaultExceptionFactory;
+        s_defaultExceptionFactory;
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties

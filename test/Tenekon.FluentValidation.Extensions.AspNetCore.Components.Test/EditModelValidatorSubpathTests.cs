@@ -111,6 +111,7 @@ public class EditModelValidatorSubpathTests : TestContext
         });
 
         var subpath = cut.FindComponent<EditModelSubpath>();
+        cut.Instance.LastParameterSetTransition.ActorEditContext.New.ShouldNotBeSameAs(subpath.Instance.ActorEditContext);
         cut.Instance.ActorEditContext.ShouldBeSameAs(subpath.Instance.ActorEditContext);
     }
 
@@ -129,6 +130,7 @@ public class EditModelValidatorSubpathTests : TestContext
 
         {
             var subpath = cut.FindComponent<EditModelSubpath>();
+            cut.Instance.LastParameterSetTransition.ActorEditContext.New.ShouldNotBeSameAs(subpath.Instance.ActorEditContext);
             cut.Instance.ActorEditContext.ShouldBeSameAs(subpath.Instance.ActorEditContext);
         }
 

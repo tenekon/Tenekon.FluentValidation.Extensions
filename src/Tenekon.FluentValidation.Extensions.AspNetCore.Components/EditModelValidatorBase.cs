@@ -54,7 +54,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         void CaptureEditModelSubpathReference(object reference) => _editModelSubpathReference = Unsafe.As<EditModelSubpath>(reference);
     }
 
-    public override EditContext ActorEditContext => _editModelSubpathReference?.ActorEditContext ?? base.ActorEditContext;
+    internal override EditContext ActorEditContext => _editModelSubpathReference?.ActorEditContext ?? base.ActorEditContext;
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties
@@ -145,7 +145,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     private void ApplyValidationStrategy(ValidationStrategy<object> validationStrategy) =>
         ConfigureValidationStrategy?.Invoke(validationStrategy);
 
-    protected virtual void ConfigureValidationContext(ConfigueValidationContextArguments arguments)
+    internal virtual void ConfigureValidationContext(ConfigueValidationContextArguments arguments)
     {
         /* TODO: Make pluggable */
         // arguments.ValidationContext.RootContextData[EditModelValidatorContextLookupKey.Standard] =
@@ -191,7 +191,10 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         base.ConfigureParameterSetTransition(transition);
         var transition2 = Unsafe.As<EditModelValidatorBaseParameterSetTransition>(transition);
         transition2.Routes.Old = LastParameterSetTransition.Routes.NewOrNull;
-        transition2.Routes.New = Routes;
+
+        if (!transition2.IsDisposing) {
+            transition2.Routes.New = Routes;
+        }
     }
 
     internal override void ConfigureDisposalParameterSetTransition(EditContextualComponentBaseParameterSetTransition transition)
@@ -206,9 +209,8 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         candidate.IsWithinScope =
             (LastParameterSetTransition.RootEditContext.TryGetNew(out var rootEditContext) &&
                 ReferenceEquals(rootEditContext, candidate.EditContext)) ||
-            (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(
-                candidate.EditContext,
-                out var candidateRootEditContext) && ReferenceEquals(rootEditContext, candidateRootEditContext));
+            (EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(candidate.EditContext, out var candidateRootEditContext) &&
+                ReferenceEquals(rootEditContext, candidateRootEditContext));
     }
 
     private void ClearValidationMessageStores()
@@ -252,9 +254,9 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         actorEditContext.NotifyValidationStateChanged();
     }
 
-    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
+    internal override void OnValidateModel(object? sender, ValidationRequestedEventArgs args) => ValidateModel();
 
-    protected virtual void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args)
+    internal void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args)
     {
         // A. Whenever an actor edit context of a direct descendant of EditModelSubpath fires OnValidationRequested,
         //    it bubbles up to the root edit context, triggering OnValidateModel(object? sender, ValidationRequestedEventArgs args)
@@ -361,7 +363,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         }
     }
 
-    protected override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
+    internal override void OnValidateField(object? sender, FieldChangedEventArgs e) => ValidateDirectField(e.FieldIdentifier);
 
     void IEditModelValidationNotifier.NotifyNestedFieldValidationRequested(EditModelNestedFieldValidationRequestedArgs args) =>
         ValidateNestedField(args.FullFieldPath, args.SubFieldIdentifier);
@@ -383,7 +385,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         }
     }
 
-    public override async ValueTask DisposeAsyncCore()
+    protected override async ValueTask DisposeAsyncCore()
     {
         await DeinitalizeServiceScopeSourceAsync();
         await base.DisposeAsyncCore();

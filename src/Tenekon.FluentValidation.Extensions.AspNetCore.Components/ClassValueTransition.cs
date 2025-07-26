@@ -17,5 +17,6 @@ internal class ClassValueTransition<T> : ValueTransition<T> where T : class
         _isOldReferenceEqualsToNew = null;
         _isOldReferenceDifferentToNew = null;
         _isNewNullStateChanged = null;
+        base.InvalidateCacheCore();
     }
 }

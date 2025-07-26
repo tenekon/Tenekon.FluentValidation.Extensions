@@ -41,7 +41,7 @@ library enhances component-level validation in Blazor applications using FluentV
 <small><sup>1</sup>: Any form that provides a cascaded `EditContext`, even a plain `CascadedValue Value="new EditContext(..)">..</CascadedValue>` is sufficient.</small><br/>
 <small><sup>2</sup>: Refers to the usage of validator components of this library.</small><br/>
 <small><sup>3</sup>: Nested child edit model validators automatically receive the nearest `EditContext`, captured by the first validator component<sup>2</sup> higher in the hierarchy (usually from a form<sup>1</sup>).</small><br/>
-<small><sup>4</sup>: EditModelValidatorSubpath has the capability to create a scoped `EditContxt` wired to the nearest `EditContext`<sup>3</sup>.
+<small><sup>4</sup>: EditModel[Validator]Subpath has the capability to create a scoped `EditContxt` wired to the nearest `EditContext`<sup>3</sup>.
 
 ### Quickstart
 

@@ -1,6 +1,7 @@
 ﻿namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-public class EditModelValidationException : InvalidOperationException
+// TODO: Removable? 
+internal class EditModelValidationException : InvalidOperationException
 {
     public EditModelValidationException()
     {

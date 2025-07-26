@@ -15,7 +15,7 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, IEditContextualComponentTrait, IEditModelSubpathTrait,
     IParameterSetTransitionHandlerRegistryProvider
 {
-    public static readonly Func<IEditModelSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
+    internal static readonly Func<IEditModelSubpathTrait.ErrorContext, Exception> s_defaultExceptionFactory = DefaultExceptionFactoryImpl;
 
     static EditModelSubpath()
     {
@@ -38,6 +38,10 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
             //  handler.
             HandlerInsertPosition.After,
             SetProvidedEditContexts);
+
+        ParameterSetTransitionHandlerRegistryProvider<EditModelSubpath>.ParameterSetTransitionHandlerRegistry.RegisterHandler(
+            SetRoutesOwningEditModelValidationNotifier,
+            HandlerInsertPosition.After);
     }
 
     static ParameterSetTransitionHandlerRegistry IParameterSetTransitionHandlerRegistryProvider.ParameterSetTransitionHandlerRegistry {
@@ -82,7 +86,35 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
         }
     };
 
-    Func<IEditModelSubpathTrait.ErrorContext, Exception> IEditModelSubpathTrait.ExceptionFactory => DefaultExceptionFactory;
+    private static Action<EditContextualComponentBaseParameterSetTransition> SetRoutesOwningEditModelValidationNotifier { get; } =
+        static transition => {
+            if (transition.IsDisposing) {
+                return;
+            }
+
+            var component = Unsafe.As<EditModelSubpath>(transition.Component);
+            var transition2 = Unsafe.As<EditModelSubpathParameterSetTransition>(transition);
+
+            if (transition.RootEditContext.IsNewDifferent) {
+                if (component.RoutesOwningEditModelValidationNotifier is { } validationNotifier) {
+                    var validationScopeContext = new ValidationScopeContext(transition.RootEditContext.New);
+                    validationNotifier.EvaluateValidationScope(validationScopeContext);
+                    if (validationScopeContext.IsWithinScope) {
+                        transition2.RoutesOwningEditModelValidationNotifier.New = validationNotifier;
+                    } else {
+                        transition2.RoutesOwningEditModelValidationNotifier.New = component.AncestorEditContextValidationNotifier;
+                    }
+                } else {
+                    transition2.RoutesOwningEditModelValidationNotifier.New = component.AncestorEditContextValidationNotifier;
+                }
+            } else if (transition2.RoutesOwningEditModelValidationNotifier.IsUnitialized) {
+                transition2.RoutesOwningEditModelValidationNotifier.New = component.AncestorEditContextValidationNotifier;
+            } else {
+                transition2.RoutesOwningEditModelValidationNotifier.New = transition2.RoutesOwningEditModelValidationNotifier.Old;
+            }
+        };
+
+    Func<IEditModelSubpathTrait.ErrorContext, Exception> IEditModelSubpathTrait.ExceptionFactory => s_defaultExceptionFactory;
 
     private static Exception DefaultExceptionFactoryImpl(IEditModelSubpathTrait.ErrorContext context) =>
         context.Identifier switch {
@@ -93,7 +125,6 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
 
     private Dictionary<ModelIdentifier, FieldIdentifier>? _subModelAccessPathMap;
     private ModelIdentifier _ancestorEditContextModelIdentifier;
-    private IEditModelValidationNotifier? _editModelValidationNotifier;
 
     [CascadingParameter]
     private IEditModelValidationNotifier? RoutesOwningEditModelValidationNotifier { get; set; }
@@ -128,6 +159,9 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
 
     EditContext? IEditContextualComponentTrait.ActorEditContext => ((IEditModelSubpathTrait)this).ActorEditContext;
 
+    internal override EditModelSubpathParameterSetTransition LastParameterSetTransition =>
+        Unsafe.As<EditModelSubpathParameterSetTransition>(Unsafe.As<ILastParameterSetTransitionTrait>(this).LastParameterSetTransition);
+
     [Parameter]
     public Expression<Func<object>>[]? Routes { get; set; }
 
@@ -140,18 +174,6 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
     internal override async Task OnParametersTransitioningAsync()
     {
         await base.OnParametersTransitioningAsync();
-
-        if (RoutesOwningEditModelValidationNotifier is { } validationNotifier) {
-            var validationScopeContext = new ValidationScopeContext(LastParameterSetTransition.RootEditContext.New);
-            validationNotifier.EvaluateValidationScope(validationScopeContext);
-            if (validationScopeContext.IsWithinScope) {
-                _editModelValidationNotifier = RoutesOwningEditModelValidationNotifier;
-            } else {
-                _editModelValidationNotifier = AncestorEditContextValidationNotifier;
-            }
-        } else {
-            _editModelValidationNotifier = AncestorEditContextValidationNotifier;
-        }
 
         InitializeModelRoutes();
 
@@ -188,29 +210,32 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
     internal override EditContextualComponentBaseParameterSetTransition CreateParameterSetTransition() =>
         new EditModelSubpathParameterSetTransition();
 
-    protected override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
+    internal override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        Debug.Assert(_editModelValidationNotifier is not null);
+        Debug.Assert(LastParameterSetTransition.RoutesOwningEditModelValidationNotifier is not null);
         var validationRequestedArgs = new EditModelModelValidationRequestedArgs(sender, sender);
-        _editModelValidationNotifier.NotifyModelValidationRequested(validationRequestedArgs);
+        LastParameterSetTransition.RoutesOwningEditModelValidationNotifier.New.NotifyModelValidationRequested(validationRequestedArgs);
     }
 
-    protected override void OnValidateField(object? sender, FieldChangedEventArgs e)
+    internal override void OnValidateField(object? sender, FieldChangedEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        Debug.Assert(_editModelValidationNotifier is not null);
 
         // Scenario 1: Given () => City.Address.Street, then Model = Address and FieldName = "Street" 
         var subFieldIdentifier = e.FieldIdentifier;
         var subFieldModelIdentifier = new ModelIdentifier(subFieldIdentifier.Model);
         if (subFieldModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
             var directFieldValidationRequestArgs = new EditModelDirectFieldValidationRequestedArgs(this, sender, subFieldIdentifier);
-            _editModelValidationNotifier.NotifyDirectFieldValidationRequested(directFieldValidationRequestArgs);
+
+            LastParameterSetTransition.RoutesOwningEditModelValidationNotifier.New.NotifyDirectFieldValidationRequested(
+                directFieldValidationRequestArgs);
+
             goto notifyValidationStateChanged;
         }
 
         Debug.Assert(_subModelAccessPathMap is not null);
+
         // Scenario 1: Using Address (Model) as the ModelIdentifier key,
         //  get the model route with City as Model and "City.Address" as FieldName
         if (!_subModelAccessPathMap.TryGetValue(subFieldModelIdentifier, out var subModelAccessPath)) {
@@ -220,14 +245,18 @@ public class EditModelSubpath : EditContextualComponentBase<EditModelSubpath>, I
 
         // Scenario 1: Concenate City.Address and Street
         var fullFieldPathString = $"{subModelAccessPath.FieldName}.{subFieldIdentifier.FieldName}";
+
         // Scenario 1: Build a FieldIdentifier with City as the Model and City.Address.Street as the FieldName
         var fullFieldPath = new FieldIdentifier(subModelAccessPath.Model, fullFieldPathString);
+
         var nestedFieldValidationRequestedArgs = new EditModelNestedFieldValidationRequestedArgs(
             this,
             sender,
             fullFieldPath,
             subFieldIdentifier);
-        _editModelValidationNotifier.NotifyNestedFieldValidationRequested(nestedFieldValidationRequestedArgs);
+
+        LastParameterSetTransition.RoutesOwningEditModelValidationNotifier.New.NotifyNestedFieldValidationRequested(
+            nestedFieldValidationRequestedArgs);
 
         notifyValidationStateChanged:
         LastParameterSetTransition.ActorEditContext.New.NotifyValidationStateChanged();

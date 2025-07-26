@@ -2,9 +2,10 @@
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-internal abstract class ValueTransition<T>
+internal abstract class ValueTransition<T> : IValueState<T>
 {
     private T? _new;
+    private int _cacheInvalidationState;
 
     internal IRevisioner? Revisioner { get; set; }
 
@@ -43,6 +44,8 @@ internal abstract class ValueTransition<T>
         }
     }
 
+    T IValueState<T>.Value => New;
+
     public T? NewOrNull => _new;
 
     [MemberNotNullWhen(returnValue: false, nameof(_new))]
@@ -69,13 +72,27 @@ internal abstract class ValueTransition<T>
     // ReSharper disable once UnusedMemberInSuper.Global
     public abstract bool IsNewDifferent { get; }
 
-    protected virtual void InvalidateCacheCore()
-    {
+    public virtual bool IsUnitialized {
+        get {
+            if (Interlocked.Or(ref _cacheInvalidationState, (int)CacheInvalidationStates.IsUninitialized) == 0) {
+                field = IsOldNull && IsNewNull;
+            }
+
+            return field;
+        }
     }
+
+    protected virtual void InvalidateCacheCore() => _cacheInvalidationState = 0;
 
     public void InvalidateCache()
     {
         InvalidateCacheCore();
         Revisioner?.IncrementRevision();
+    }
+
+    [Flags]
+    private enum CacheInvalidationStates
+    {
+        IsUninitialized = 1 << 0
     }
 }

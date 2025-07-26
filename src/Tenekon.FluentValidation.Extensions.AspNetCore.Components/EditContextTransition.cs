@@ -17,5 +17,6 @@ internal sealed class EditContextTransition : ClassValueTransition<EditContext>
     {
         _isOldReferenceEqualsToNew = null;
         _isOldReferenceDifferentToNew = null;
+        base.InvalidateCacheCore();
     }
 }

@@ -7,6 +7,8 @@
     <PackageLicenseFile Condition="'$(PackageLicenseFile)' == ''">LICENSE</PackageLicenseFile>
     <PackageIcon Condition="'$(PackageIcon)' == ''">icon.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>https://github.com/tenekon/Tenekon.FluentValidation.Extensions/blob/$(PackageVersion)/CHANGELOG.md</PackageReleaseNotes>
+    <RepositoryUrl>https://github.com/tenekon/Tenekon.FluentValidation.Extensions.git</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageTags>FluentValidation;Blazor;ASP.NET Core;AspNetCore;fluent;validation;component;components</PackageTags>
     <!-- We currently do not want to have a seperate snupkg -->

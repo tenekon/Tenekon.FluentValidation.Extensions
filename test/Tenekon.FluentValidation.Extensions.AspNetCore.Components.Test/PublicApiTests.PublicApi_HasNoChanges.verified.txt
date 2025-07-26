@@ -1,0 +1,86 @@
+﻿[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/tenekon/Tenekon.FluentValidation.Extensions.git")]
+[assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v8.0", FrameworkDisplayName=".NET 8.0")]
+namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components
+{
+    public sealed class Ancestor { }
+    public static class EditContextPropertyAccessor
+    {
+        public static bool TryGetRootEditContext(Microsoft.AspNetCore.Components.Forms.EditContext editContext, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Microsoft.AspNetCore.Components.Forms.EditContext? value) { }
+    }
+    public abstract class EditContextualComponentBase<TDerived> : Microsoft.AspNetCore.Components.ComponentBase, System.IAsyncDisposable, System.IDisposable, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IEditContextualComponent
+        where TDerived : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditContextualComponentBase<TDerived>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    {
+        protected EditContextualComponentBase() { }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public Microsoft.AspNetCore.Components.RenderFragment? ChildContent { get; set; }
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) { }
+        protected virtual void Dispose(bool disposing) { }
+        protected virtual System.Threading.Tasks.ValueTask DisposeAsyncCore() { }
+        protected virtual void DisposeCommon() { }
+        protected override System.Threading.Tasks.Task OnParametersSetAsync() { }
+        protected void RenderEditContextualComponent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, Microsoft.AspNetCore.Components.RenderFragment? childContent) { }
+    }
+    public class EditModelSubpath : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditContextualComponentBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelSubpath>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    {
+        public EditModelSubpath() { }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public Tenekon.FluentValidation.Extensions.AspNetCore.Components.Ancestor? Ancestor { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public Microsoft.AspNetCore.Components.Forms.EditContext? EditContext { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public object? Model { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public System.Linq.Expressions.Expression<System.Func<object>>[]? Routes { get; set; }
+        protected override System.Threading.Tasks.Task OnParametersSetAsync() { }
+    }
+    public abstract class EditModelValidatorBase<TDerived> : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditContextualComponentBase<TDerived>
+        where TDerived : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorBase<TDerived>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    {
+        protected EditModelValidatorBase() { }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public System.Action<FluentValidation.Internal.ValidationStrategy<object>>? ConfigureValidationStrategy { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public FluentValidation.Severity MinimumSeverity { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public System.Linq.Expressions.Expression<System.Func<object>>[]? Routes { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public bool SuppressInvalidatableFieldModels { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public FluentValidation.IValidator? Validator { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public System.Type? ValidatorType { get; set; }
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) { }
+        protected override void Dispose(bool disposing) { }
+        protected override System.Threading.Tasks.ValueTask DisposeAsyncCore() { }
+        protected override System.Threading.Tasks.Task OnParametersSetAsync() { }
+    }
+    public class EditModelValidatorRootpath : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorRootpath>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    {
+        public EditModelValidatorRootpath() { }
+    }
+    public class EditModelValidatorSubpath : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorSubpath>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    {
+        public EditModelValidatorSubpath() { }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public Microsoft.AspNetCore.Components.Forms.EditContext? EditContext { get; set; }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public object? Model { get; set; }
+        protected override System.Threading.Tasks.Task OnParametersSetAsync() { }
+    }
+    public interface IEditContextualComponent
+    {
+        Tenekon.FluentValidation.Extensions.AspNetCore.Components.IEditContextualComponentState ComponentState { get; }
+        Microsoft.AspNetCore.Components.Forms.EditContext EditContext { get; }
+    }
+    public interface IEditContextualComponentState
+    {
+        Tenekon.FluentValidation.Extensions.AspNetCore.Components.IValueState<Microsoft.AspNetCore.Components.Forms.EditContext> ActorEditContext { get; }
+        Tenekon.FluentValidation.Extensions.AspNetCore.Components.IValueState<Microsoft.AspNetCore.Components.Forms.EditContext> AncestorEditContext { get; }
+        Tenekon.FluentValidation.Extensions.AspNetCore.Components.IValueState<Microsoft.AspNetCore.Components.Forms.EditContext> RootEditContext { get; }
+    }
+    public interface IParameterSetTransitionHandlerRegistryProvider { }
+    public interface IValueState<out T>
+    {
+        T Value { get; }
+    }
+}

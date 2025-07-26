@@ -8,8 +8,8 @@ using RuntimeHelpers = System.Runtime.CompilerServices.RuntimeHelpers;
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 // ReSharper disable StaticMemberInGenericType
-public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEditContextualComponentTrait,
-    ILastParameterSetTransitionTrait, IDisposable, IAsyncDisposable where TDerived : IParameterSetTransitionHandlerRegistryProvider
+public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEditContextualComponent, IEditContextualComponentTrait,
+    ILastParameterSetTransitionTrait, IDisposable, IAsyncDisposable where TDerived : EditContextualComponentBase<TDerived>, IParameterSetTransitionHandlerRegistryProvider
 {
     static EditContextualComponentBase()
     {
@@ -81,11 +81,11 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
             if (transition.ActorEditContext.IsNewDifferent || transition.RootEditContext.IsNewDifferent) {
                 // TODO: && IsFirstTransition: false?
                 if (transition.ActorEditContext is { IsOldNonNull: true }) {
-                    RootEditContextPropertyAccessorHolder.s_accessor.DisoccupyProperty(transition.ActorEditContext.Old);
+                    EditContextPropertyAccessor.s_rootEditContext.DisoccupyProperty(transition.ActorEditContext.Old);
                 }
 
                 if (transition.ActorEditContext.IsNewNonNull && transition.RootEditContext.IsNewNonNull) {
-                    RootEditContextPropertyAccessorHolder.s_accessor.OccupyProperty(
+                    EditContextPropertyAccessor.s_rootEditContext.OccupyProperty(
                         transition.ActorEditContext.New,
                         transition.RootEditContext.New);
                 }
@@ -138,7 +138,7 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
         if (areActorEditContextAndAncestorEditContextEqual) {
             rootEditContext = ancestorEditContext;
         } else {
-            if (RootEditContextPropertyAccessorHolder.s_accessor.TryGetPropertyValue(ancestorEditContext, out var rootEditContext2)) {
+            if (EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(ancestorEditContext, out var rootEditContext2)) {
                 rootEditContext = rootEditContext2;
             } else {
                 rootEditContext = ancestorEditContext;
@@ -176,21 +176,25 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
         set;
     }
 
-    internal virtual EditContextualComponentBaseParameterSetTransition LastParameterSetTransition {
-        get => Unsafe.As<ILastParameterSetTransitionTrait>(this).LastParameterSetTransition;
-    }
+    internal virtual EditContextualComponentBaseParameterSetTransition LastParameterSetTransition =>
+        Unsafe.As<ILastParameterSetTransitionTrait>(this).LastParameterSetTransition;
 
-    public virtual EditContext ActorEditContext =>
+    IEditContextualComponentState IEditContextualComponent.ComponentState => LastParameterSetTransition;
+
+    EditContext? IEditContextualComponentTrait.ActorEditContext => null;
+
+    internal virtual EditContext ActorEditContext =>
         LastParameterSetTransition.ActorEditContext.NewOrNull ?? throw new InvalidOperationException(
             $"The {nameof(ActorEditContext)} property hos not been yet initialized. Typically initialized the first time during component initialization.");
+
 
     [CascadingParameter]
     internal EditContext? AncestorEditContext { get; set; }
 
+    EditContext IEditContextualComponent.EditContext => LastParameterSetTransition.ActorEditContext.New;
+
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
-
-    EditContext? IEditContextualComponentTrait.ActorEditContext => null;
 
     protected override Task OnParametersSetAsync() => OnParametersTransitioningAsync();
 
@@ -212,27 +216,32 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
 
     internal virtual void ConfigureParameterSetTransition(EditContextualComponentBaseParameterSetTransition transition)
     {
-        var isFirstTransition = !_didParametersTransitionedOnce;
         transition.Component = this;
+
+        var isFirstTransition = !_didParametersTransitionedOnce;
         transition.IsFirstTransition = isFirstTransition;
+
         transition.ActorEditContext.Old = LastParameterSetTransition.ActorEditContext.NewOrNull;
         transition.AncestorEditContext.Old = LastParameterSetTransition.AncestorEditContext.NewOrNull;
         transition.RootEditContext.Old = LastParameterSetTransition.RootEditContext.NewOrNull;
         transition.ChildContent.Old = LastParameterSetTransition.ChildContent.NewOrNull;
-        transition.ChildContent.New = ChildContent;
+
+        if (!transition.IsDisposing) {
+            transition.ChildContent.New = ChildContent;
+        }
     }
 
     internal virtual void ConfigureDisposalParameterSetTransition(EditContextualComponentBaseParameterSetTransition transition)
     {
-        ConfigureParameterSetTransition(transition);
         transition.IsDisposing = true;
+        ConfigureParameterSetTransition(transition);
     }
 
-    protected virtual void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
+    internal virtual void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
     }
 
-    protected virtual void OnValidateField(object? sender, FieldChangedEventArgs e)
+    internal virtual void OnValidateField(object? sender, FieldChangedEventArgs e)
     {
     }
 
@@ -264,7 +273,7 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
 
     protected override void BuildRenderTree(RenderTreeBuilder builder) => RenderEditContextualComponent(builder, ChildContent);
 
-    protected virtual void DeinitializeRootValidationMessageStore()
+    private void DeinitializeRootValidationMessageStore()
     {
         if (_rootEditContextValidationMessageStore is null) {
             return;
@@ -273,9 +282,9 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
         _rootEditContextValidationMessageStore = null;
     }
 
-    protected virtual void DeinitializeRootEditContext() => LastParameterSetTransition.RootEditContext.New = null;
+    private void DeinitializeRootEditContext() => LastParameterSetTransition.RootEditContext.New = null;
 
-    protected virtual void DeinitializeAncestorEditContext()
+    private void DeinitializeAncestorEditContext()
     {
         if (!LastParameterSetTransition.AncestorEditContext.TryGetNew(out var editContext, invalidate: true)) {
             return;
@@ -284,7 +293,7 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
         editContext.OnValidationRequested -= OnValidateModel;
     }
 
-    protected virtual void DeinitializeActorEditContextValidationMessageStore()
+    private void DeinitializeActorEditContextValidationMessageStore()
     {
         if (_actorEditContextValidationMessageStore is null) {
             return;
@@ -293,7 +302,7 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
         _actorEditContextValidationMessageStore = null;
     }
 
-    protected virtual void DeinitializeActorEditContext()
+    private void DeinitializeActorEditContext()
     {
         var editContextTransition = LastParameterSetTransition.ActorEditContext;
         if (!editContextTransition.TryGetNew(out var editContext)) {
@@ -344,9 +353,9 @@ public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEd
         GC.SuppressFinalize(this);
     }
 
-    public virtual ValueTask DisposeAsyncCore() => ValueTask.CompletedTask;
+    protected virtual ValueTask DisposeAsyncCore() => ValueTask.CompletedTask;
 
-    public async ValueTask DisposeAsync()
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
         if ((Interlocked.Or(ref _disposalState, (int)DisposalStates.AsyncDisposed) & (int)DisposalStates.AsyncDisposed) != 0) {
             return;

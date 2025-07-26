@@ -8,7 +8,7 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 ///     Uniquely identifies a single field that can be edited. This may correspond to a property on a model object, or can be any other
 ///     named value.
 /// </summary>
-public readonly struct ModelIdentifier : IEquatable<ModelIdentifier>
+internal readonly struct ModelIdentifier : IEquatable<ModelIdentifier>
 {
     /// <summary>Initializes a new instance of the <see cref="ModelIdentifier" /> structure.</summary>
     /// <param name="accessor">An expression that identifies an object member.</param>
