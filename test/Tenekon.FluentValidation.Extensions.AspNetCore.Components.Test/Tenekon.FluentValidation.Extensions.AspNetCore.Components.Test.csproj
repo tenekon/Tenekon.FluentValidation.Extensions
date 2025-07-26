@@ -35,4 +35,10 @@
     <ProjectReference Include="..\..\src\Tenekon.FluentValidation.Extensions.AspNetCore.Components\Tenekon.FluentValidation.Extensions.AspNetCore.Components.csproj"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="PublicApiTests.FluentValidationAspNetCoreComponentsPublicApi_HasNoChanges.verified.txt">
+      <DependentUpon>PublicApiTests.cs</DependentUpon>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -5,7 +5,7 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 public class PublicApiTests
 {
     [Fact]
-    public Task PublicApi_HasNoChanges()
+    public Task FluentValidationAspNetCoreComponentsPublicApi_HasNoChanges()
     {
         var publicApi = typeof(EditContextualComponentBase<>).Assembly.GeneratePublicApi(
             new ApiGeneratorOptions {
