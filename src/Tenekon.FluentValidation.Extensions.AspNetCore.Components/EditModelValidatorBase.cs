@@ -156,10 +156,10 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     {
         var serviceScopeSource = new ServiceScopeSource(ServiceProvider);
 
-        // We do not allow to set the validator Explicitly and having specified the validator type as the same type 
-        if (!(_havingValidatorSetExplicitly ^ ValidatorType is not null)) {
+        // We do not allow setting the validator explicitly when the validator type is specified as the same type
+        if (_havingValidatorSetExplicitly == ValidatorType is not null) {
             throw new InvalidOperationException(
-                $"{GetType()} requires either the parameter {nameof(Validator)} of type {nameof(IValidator)} or {nameof(ValidatorType)} of type {nameof(Type)}, but not both.");
+                $"{GetType()} requires exactly one parameter {nameof(Validator)} of type {nameof(IValidator)} or {nameof(ValidatorType)} of type {nameof(Type)}.");
         }
 
         var validatorType = ValidatorType;

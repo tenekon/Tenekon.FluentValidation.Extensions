@@ -10,17 +10,15 @@ public class EditModelValidatorSubpath : EditModelValidatorBase<EditModelValidat
 {
     public static readonly Func<IEditModelValidatorSubpathTrait.ErrorContext, Exception> DefaultExceptionFactory =
         DefaultExceptionFactoryImpl;
-    
+
     static ParameterSetTransitionHandlerRegistry IParameterSetTransitionHandlerRegistryProvider.ParameterSetTransitionHandlerRegistry {
         get;
     } = new();
 
     private static Exception DefaultExceptionFactoryImpl(IEditModelValidatorSubpathTrait.ErrorContext context) =>
         context.Identifier switch {
-            IEditModelValidatorSubpathTrait.ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
-                $"{context.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter, but not both."),
-            IEditModelValidatorSubpathTrait.ErrorIdentifier.NoActorEditContextAndNoModel => new InvalidOperationException(
-                $"{context.Provocateur?.GetType().Name} requires either a non-null {nameof(Model)} parameter or a non-null {nameof(EditContext)} parameter."),
+            IEditModelValidatorSubpathTrait.ErrorIdentifier.NotExactlyOneActorEditContextOrModel => new InvalidOperationException(
+                $"{context.Provocateur?.GetType().Name} requires exactly one non-null {nameof(Model)} parameter or non-null {nameof(EditContext)} parameter."),
             _ => IEditModelValidatorSubpathTrait.DefaultExceptionFactory(context)
         };
 
