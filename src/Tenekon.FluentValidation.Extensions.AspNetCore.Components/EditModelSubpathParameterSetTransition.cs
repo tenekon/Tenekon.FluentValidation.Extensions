@@ -2,10 +2,10 @@
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-internal class EditModelSubpathParameterSetTransition : EditModelScopeParameterSetTransition
+internal class EditModelValidatorRoutesParameterSetTransition : EditModelScopeParameterSetTransition
 {
     [field: AllowNull]
     [field: MaybeNull]
-    public ClassValueTransition<IEditModelValidationNotifier> RoutesOwningEditModelValidationNotifier =>
+    public ClassValueTransition<IEditModelValidationNotifier> AncestorEditModelValidationNotifier =>
         field ??= new ClassValueTransition<IEditModelValidationNotifier> { Revisioner = this };
 }

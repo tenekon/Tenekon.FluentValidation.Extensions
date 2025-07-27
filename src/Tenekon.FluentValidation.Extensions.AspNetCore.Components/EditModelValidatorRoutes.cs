@@ -33,14 +33,14 @@ public class EditModelValidatorRoutes : EditModelScopeBase<EditModelValidatorRou
             }
 
             var component = Unsafe.As<EditModelValidatorRoutes>(transition.Component);
-            var transition2 = Unsafe.As<EditModelSubpathParameterSetTransition>(transition);
+            var transition2 = Unsafe.As<EditModelValidatorRoutesParameterSetTransition>(transition);
 
             if (transition.RootEditContext.IsNewDifferent) {
                 if (component.AncestorEditModelValidationNotifier is { } validationNotifier) {
                     var validationScopeContext = new ValidationScopeContext(transition.RootEditContext.New);
                     validationNotifier.EvaluateValidationScope(validationScopeContext);
                     if (validationScopeContext.IsWithinScope) {
-                        transition2.RoutesOwningEditModelValidationNotifier.New = validationNotifier;
+                        transition2.AncestorEditModelValidationNotifier.New = validationNotifier;
                     } else {
                         throw new InvalidOperationException(
                             $"{component.GetType().Name} has a cascading validation notifier, but it operates in a different scope than this component.");
@@ -49,10 +49,10 @@ public class EditModelValidatorRoutes : EditModelScopeBase<EditModelValidatorRou
                     throw new InvalidOperationException(
                         $"{component.GetType().Name} requires a non-null cascading validation notifier, internally provided by e.g. {nameof(EditModelValidatorRootpath)} or {nameof(EditModelValidatorSubpath)}.");
                 }
-            } else if (transition2.RoutesOwningEditModelValidationNotifier.IsUnitialized) {
+            } else if (transition2.AncestorEditModelValidationNotifier.IsUnitialized) {
                 throw new InvalidOperationException("missing root edit context");
             } else {
-                transition2.RoutesOwningEditModelValidationNotifier.New = transition2.RoutesOwningEditModelValidationNotifier.Old;
+                transition2.AncestorEditModelValidationNotifier.New = transition2.AncestorEditModelValidationNotifier.Old;
             }
         };
 
@@ -62,8 +62,8 @@ public class EditModelValidatorRoutes : EditModelScopeBase<EditModelValidatorRou
     [CascadingParameter]
     private IEditModelValidationNotifier? AncestorEditModelValidationNotifier { get; set; }
 
-    internal override EditModelSubpathParameterSetTransition LastParameterSetTransition =>
-        Unsafe.As<EditModelSubpathParameterSetTransition>(Unsafe.As<ILastParameterSetTransitionTrait>(this).LastParameterSetTransition);
+    internal override EditModelValidatorRoutesParameterSetTransition LastParameterSetTransition =>
+        Unsafe.As<EditModelValidatorRoutesParameterSetTransition>(Unsafe.As<ILastParameterSetTransitionTrait>(this).LastParameterSetTransition);
 
     [Parameter]
     public Expression<Func<object>>[]? Routes { get; set; }
@@ -105,14 +105,14 @@ public class EditModelValidatorRoutes : EditModelScopeBase<EditModelValidatorRou
     }
 
     internal override EditContextualComponentBaseParameterSetTransition CreateParameterSetTransition() =>
-        new EditModelSubpathParameterSetTransition();
+        new EditModelValidatorRoutesParameterSetTransition();
 
     internal override void OnValidateModel(object? sender, ValidationRequestedEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        Debug.Assert(LastParameterSetTransition.RoutesOwningEditModelValidationNotifier is not null);
+        Debug.Assert(LastParameterSetTransition.AncestorEditModelValidationNotifier is not null);
         var validationRequestedArgs = new EditModelModelValidationRequestedArgs(sender, sender);
-        LastParameterSetTransition.RoutesOwningEditModelValidationNotifier.New.NotifyModelValidationRequested(validationRequestedArgs);
+        LastParameterSetTransition.AncestorEditModelValidationNotifier.New.NotifyModelValidationRequested(validationRequestedArgs);
     }
 
     internal override void OnValidateField(object? sender, FieldChangedEventArgs e)
@@ -125,7 +125,7 @@ public class EditModelValidatorRoutes : EditModelScopeBase<EditModelValidatorRou
         if (nestedFieldModelIdentifier.Equals(_ancestorEditContextModelIdentifier)) {
             var directFieldValidationRequestArgs = new EditModelDirectFieldValidationRequestedArgs(this, sender, nestedFieldIdentifier);
 
-            LastParameterSetTransition.RoutesOwningEditModelValidationNotifier.New.NotifyDirectFieldValidationRequested(
+            LastParameterSetTransition.AncestorEditModelValidationNotifier.New.NotifyDirectFieldValidationRequested(
                 directFieldValidationRequestArgs);
 
             goto notifyValidationStateChanged;
@@ -152,7 +152,7 @@ public class EditModelValidatorRoutes : EditModelScopeBase<EditModelValidatorRou
             fullFieldPath,
             nestedFieldIdentifier);
 
-        LastParameterSetTransition.RoutesOwningEditModelValidationNotifier.New.NotifyNestedFieldValidationRequested(
+        LastParameterSetTransition.AncestorEditModelValidationNotifier.New.NotifyNestedFieldValidationRequested(
             nestedFieldValidationRequestedArgs);
 
         notifyValidationStateChanged:

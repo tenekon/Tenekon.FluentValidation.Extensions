@@ -15,7 +15,7 @@ public abstract class EditModelScopeBase<TDerived> : EditContextualComponentBase
     static EditModelScopeBase()
     {
         RuntimeHelpers.RunClassConstructor(typeof(EditContextualComponentBase<TDerived>).TypeHandle);
-        
+
         // Because Subpath component is NOT validating, but redirecting plain edit context validation requested notifications,
         // we must not listen to validation requested notifications of root edit context, to prevent double notification.
         TDerived.ParameterSetTransitionHandlerRegistry.RemoveHandler(SubscribeToRootEditContextOnValidationRequestedAction);
@@ -66,7 +66,18 @@ public abstract class EditModelScopeBase<TDerived> : EditContextualComponentBase
                         // Cascade EditContext.Properties
                         EditContextAccessor.GetProperties(newActorEditContext) =
                             EditContextAccessor.GetProperties(ancestorEditContextTransition.New);
-                    }
+                    } /* else:
+                       * We MUST NOT cascade field states and properties, because we do not want to have shared field states,
+                       * between different validation contexts, so it becomes like this:
+                       * <EditForm ...> Context A
+                       *   <EditModelScope> // Context B - for demonstation purposes
+                       *     <EditModelValidatorRootpath .../> // Writes to A & B
+                       *     <EditModelScope> // Context C
+                       *       <EditModelValidatorRootpath .../> Writes to A & C
+                       *     </EditModelScope>
+                       *   </EditModelScope>
+                       * </EditForm>
+                       */
                 }
 
                 var transition2 = Unsafe.As<EditModelScopeParameterSetTransition>(transition);

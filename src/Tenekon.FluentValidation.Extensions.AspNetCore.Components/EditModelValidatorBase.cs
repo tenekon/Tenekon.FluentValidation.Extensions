@@ -17,27 +17,27 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 {
     static EditModelValidatorBase()
     {
-        TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(UnsetEditModelSubpathReference, HandlerInsertPosition.After);
+        TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(UnsetEditModelValidatorRoutesReference, HandlerInsertPosition.After);
         return;
 
-        void UnsetEditModelSubpathReference(EditContextualComponentBaseParameterSetTransition transition)
+        void UnsetEditModelValidatorRoutesReference(EditContextualComponentBaseParameterSetTransition transition)
         {
             if (transition.Routes is { IsNewNullStateChanged: true, IsNewNull: true }) {
                 var component = Unsafe.As<EditModelValidatorBase<TDerived>>(transition.Component);
-                component._editModelSubpathReference = null;
+                component._editModelValidatorRoutesReference = null;
             }
         }
     }
 
     private readonly RenderFragment _renderEditModelValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
-    private readonly RenderFragment _renderEditModelSubpathWithRoutesFragment;
+    private readonly RenderFragment _renderEditModelValidatorRoutesFragment;
     private readonly Action<ValidationStrategy<object>> _applyValidationStrategyAction;
-    private readonly Action<object> _captureEditModelSubpathReferenceAction;
+    private readonly Action<object> _captureEditModelValidatorRoutesReferenceAction;
     private bool _havingValidatorSetExplicitly;
     private IValidator? _validator;
     private ServiceScopeSource _serviceScopeSource;
-    private EditModelValidatorRoutes? _editModelSubpathReference;
+    private EditModelValidatorRoutes? _editModelValidatorRoutesReference;
 
     /* TODO: Make pluggable */
     // internal readonly LeafEditModelValidatorContext _leafEditModelValidatorContext = new();
@@ -46,18 +46,18 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     {
         _renderEditModelValidatorContent = RenderEditModelValidatorContent;
         _renderEditContextualComponentFragment = childContent => builder => RenderEditContextualComponent(builder, childContent);
-        _renderEditModelSubpathWithRoutesFragment = builder => RenderEditModelSubpathWithRoutes(builder, ChildContent);
+        _renderEditModelValidatorRoutesFragment = builder => RenderEditModelValidatorRoutes(builder, ChildContent);
         _applyValidationStrategyAction = ApplyValidationStrategy;
-        _captureEditModelSubpathReferenceAction = CaptureEditModelSubpathReference;
+        _captureEditModelValidatorRoutesReferenceAction = CaptureEditModelValidatorRoutesReference;
         return;
 
-        void CaptureEditModelSubpathReference(object reference)
+        void CaptureEditModelValidatorRoutesReference(object reference)
         {
-            _editModelSubpathReference = Unsafe.As<EditModelValidatorRoutes>(reference);
+            _editModelValidatorRoutesReference = Unsafe.As<EditModelValidatorRoutes>(reference);
         }
     }
 
-    internal override EditContext ActorEditContext => _editModelSubpathReference?.ActorEditContext ?? base.ActorEditContext;
+    internal override EditContext ActorEditContext => _editModelValidatorRoutesReference?.ActorEditContext ?? base.ActorEditContext;
 
     [Parameter]
 #pragma warning disable BL0007 // Component parameters should be auto properties
@@ -113,13 +113,13 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     [Parameter]
     public Expression<Func<object>>[]? Routes { get; set; }
 
-    private void RenderEditModelSubpathWithRoutes(RenderTreeBuilder builder, RenderFragment? childContent)
+    private void RenderEditModelValidatorRoutes(RenderTreeBuilder builder, RenderFragment? childContent)
     {
         builder.OpenComponent<EditModelValidatorRoutes>(sequence: 0);
         builder.AddComponentParameter(sequence: 1, nameof(EditModelValidatorRoutes.Routes), Routes);
         builder.AddComponentParameter(sequence: 2, nameof(ChildContent), childContent);
         builder.AddComponentParameter(sequence: 3, nameof(EditModelValidatorRoutes.Ancestor), Ancestor.DirectAncestor);
-        builder.AddComponentReferenceCapture(sequence: 3, _captureEditModelSubpathReferenceAction);
+        builder.AddComponentReferenceCapture(sequence: 3, _captureEditModelValidatorRoutesReferenceAction);
         builder.CloseComponent();
     }
 
@@ -134,9 +134,9 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 
     private void RenderEditModelValidatorContent(RenderTreeBuilder builder)
     {
-        // PROPOSAL: Isolate the child content by a new edit context (see EditModelSubpath)
+        // PROPOSAL: Isolate the child content by a new edit context (see EditModelValidatorRoutes)
         if (Routes is not null) {
-            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelSubpathWithRoutesFragment);
+            builder.AddContent(sequence: 0, _renderEditContextualComponentFragment, _renderEditModelValidatorRoutesFragment);
         } else {
             builder.AddContent(sequence: 1, _renderEditContextualComponentFragment, ChildContent);
         }
@@ -259,10 +259,10 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 
     internal void NotifyModelValidationRequested(EditModelModelValidationRequestedArgs args)
     {
-        // A. Whenever an actor edit context of a direct descendant of EditModelSubpath fires OnValidationRequested,
+        // A. Whenever an actor edit context of a direct descendant of EditModelValidatorRoutes fires OnValidationRequested,
         //    it bubbles up to the root edit context, triggering OnValidateModel(object? sender, ValidationRequestedEventArgs args)
         //    and implicitly ValidateModel() of any validator component associated with the root edit context,
-        //    except EditModelSubpath. This is because they do not subscribe to OnValidationRequested of the root edit context
+        //    except EditModelValidatorRoutes. This is because they do not subscribe to OnValidationRequested of the root edit context
         //    to avoid a second invocation of ValidateModel().
         // An additional safety net: To prevent a potential second invocation of ValidateModel(), we return early if the original source of
         // the event is reference-equal to the root edit context, since that instance already handles OnValidationRequested for
