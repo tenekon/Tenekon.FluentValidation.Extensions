@@ -20,17 +20,20 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components
         protected override System.Threading.Tasks.Task OnParametersSetAsync() { }
         protected void RenderEditContextualComponent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, Microsoft.AspNetCore.Components.RenderFragment? childContent) { }
     }
-    public class EditModelSubpath : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditContextualComponentBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelSubpath>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    public class EditModelScope : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelScopeBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelScope>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
     {
-        public EditModelSubpath() { }
-        [Microsoft.AspNetCore.Components.Parameter]
-        public Tenekon.FluentValidation.Extensions.AspNetCore.Components.Ancestor? Ancestor { get; set; }
+        public EditModelScope() { }
         [Microsoft.AspNetCore.Components.Parameter]
         public Microsoft.AspNetCore.Components.Forms.EditContext? EditContext { get; set; }
         [Microsoft.AspNetCore.Components.Parameter]
         public object? Model { get; set; }
+    }
+    public abstract class EditModelScopeBase<TDerived> : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditContextualComponentBase<TDerived>
+        where TDerived : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelScopeBase<TDerived>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    {
+        protected EditModelScopeBase() { }
         [Microsoft.AspNetCore.Components.Parameter]
-        public System.Linq.Expressions.Expression<System.Func<object>>[]? Routes { get; set; }
+        public Tenekon.FluentValidation.Extensions.AspNetCore.Components.Ancestor? Ancestor { get; set; }
         protected override System.Threading.Tasks.Task OnParametersSetAsync() { }
     }
     public abstract class EditModelValidatorBase<TDerived> : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditContextualComponentBase<TDerived>
@@ -57,6 +60,12 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components
     public class EditModelValidatorRootpath : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorRootpath>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
     {
         public EditModelValidatorRootpath() { }
+    }
+    public class EditModelValidatorRoutes : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelScopeBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorRoutes>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
+    {
+        public EditModelValidatorRoutes() { }
+        [Microsoft.AspNetCore.Components.Parameter]
+        public System.Linq.Expressions.Expression<System.Func<object>>[]? Routes { get; set; }
     }
     public class EditModelValidatorSubpath : Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorBase<Tenekon.FluentValidation.Extensions.AspNetCore.Components.EditModelValidatorSubpath>, Tenekon.FluentValidation.Extensions.AspNetCore.Components.IParameterSetTransitionHandlerRegistryProvider
     {

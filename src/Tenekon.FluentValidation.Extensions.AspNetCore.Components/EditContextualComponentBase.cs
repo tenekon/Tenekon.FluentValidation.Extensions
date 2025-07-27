@@ -9,7 +9,8 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 // ReSharper disable StaticMemberInGenericType
 public abstract class EditContextualComponentBase<TDerived> : ComponentBase, IEditContextualComponent, IEditContextualComponentTrait,
-    ILastParameterSetTransitionTrait, IDisposable, IAsyncDisposable where TDerived : EditContextualComponentBase<TDerived>, IParameterSetTransitionHandlerRegistryProvider
+    ILastParameterSetTransitionTrait, IDisposable,
+    IAsyncDisposable where TDerived : EditContextualComponentBase<TDerived>, IParameterSetTransitionHandlerRegistryProvider
 {
     static EditContextualComponentBase()
     {

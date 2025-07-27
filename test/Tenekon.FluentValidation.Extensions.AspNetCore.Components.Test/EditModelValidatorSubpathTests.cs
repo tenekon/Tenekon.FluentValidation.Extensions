@@ -43,7 +43,7 @@ public class EditModelValidatorSubpathTests : TestContext
 
         var cascadingEditForm = RenderComponent<CascadingValue<EditContext>>(p => {
             p.Add(x => x.Value, editContext1);
-            p.Add(x => x.IsFixed, false);
+            p.Add(x => x.IsFixed, value: false);
             p.AddChildContent<EditModelValidatorSubpath>(p2 => {
                 p2.Add(x => x.Model, model);
                 p2.Add(x => x.Validator, new ModelValidator());
@@ -77,7 +77,7 @@ public class EditModelValidatorSubpathTests : TestContext
 
         var cascadingEditForm = RenderComponent<CascadingValue<EditContext>>(p => {
             p.Add(x => x.Value, editContext1);
-            p.Add(x => x.IsFixed, false);
+            p.Add(x => x.IsFixed, value: false);
             p.AddChildContent<EditModelValidatorSubpath>(p2 => {
                 p2.Add(x => x.Model, model);
                 p2.Add(x => x.Validator, new ModelValidator());
@@ -110,7 +110,7 @@ public class EditModelValidatorSubpathTests : TestContext
             parameters.Add<Expression<Func<object>>[]?>(x => x.Routes, [() => model.Child]);
         });
 
-        var subpath = cut.FindComponent<EditModelSubpath>();
+        var subpath = cut.FindComponent<EditModelValidatorRoutes>();
         cut.Instance.LastParameterSetTransition.ActorEditContext.New.ShouldNotBeSameAs(subpath.Instance.ActorEditContext);
         cut.Instance.ActorEditContext.ShouldBeSameAs(subpath.Instance.ActorEditContext);
     }
@@ -129,7 +129,7 @@ public class EditModelValidatorSubpathTests : TestContext
         });
 
         {
-            var subpath = cut.FindComponent<EditModelSubpath>();
+            var subpath = cut.FindComponent<EditModelValidatorRoutes>();
             cut.Instance.LastParameterSetTransition.ActorEditContext.New.ShouldNotBeSameAs(subpath.Instance.ActorEditContext);
             cut.Instance.ActorEditContext.ShouldBeSameAs(subpath.Instance.ActorEditContext);
         }

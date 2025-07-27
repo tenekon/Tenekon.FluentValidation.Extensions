@@ -13,7 +13,7 @@ internal readonly struct ModelIdentifier : IEquatable<ModelIdentifier>
     /// <summary>Initializes a new instance of the <see cref="ModelIdentifier" /> structure.</summary>
     /// <param name="accessor">An expression that identifies an object member.</param>
     /// <typeparam name="TField">The field <see cref="Type" />.</typeparam>
-    public static ModelIdentifier Create<TField>(Expression<Func<TField>> accessor)
+    public static ModelIdentifier ResolveFromAccessPath<TField>(Expression<Func<TField>> accessor)
     {
         ArgumentNullException.ThrowIfNull(accessor);
 

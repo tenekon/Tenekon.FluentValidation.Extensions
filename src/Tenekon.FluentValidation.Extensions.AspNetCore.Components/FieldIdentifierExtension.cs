@@ -15,7 +15,7 @@ internal static class FieldIdentifierExtension
     /// <param name="accessor"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentException"></exception>
-    public static FieldIdentifier WithPropertyPath<T>(Expression<Func<T>> accessor)
+    public static FieldIdentifier CreateFullAccessPath<T>(Expression<Func<T>> accessor)
     {
         var accessorBody = accessor.Body;
 

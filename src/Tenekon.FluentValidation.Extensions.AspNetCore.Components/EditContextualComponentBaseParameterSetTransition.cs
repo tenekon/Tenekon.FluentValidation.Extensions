@@ -8,7 +8,7 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 internal class EditContextualComponentBaseParameterSetTransition : IEditContextualComponentState, IRevisioner
 {
     public static EditContextualComponentBaseParameterSetTransition Unbound { get; } = new() {
-        Component = new object(),
+        Component = new object()
     };
 
     private int _revision;

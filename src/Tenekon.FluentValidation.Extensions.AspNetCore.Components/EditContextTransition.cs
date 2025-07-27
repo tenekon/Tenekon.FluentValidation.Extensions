@@ -12,7 +12,7 @@ internal sealed class EditContextTransition : ClassValueTransition<EditContext>
 
     public override bool IsNewDifferent =>
         _isOldReferenceDifferentToNew ??= !ReferenceEquals(Old, NewOrNull) || !ReferenceEquals(Old?.Model, NewOrNull?.Model);
-    
+
     protected override void InvalidateCacheCore()
     {
         _isOldReferenceEqualsToNew = null;

@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
-internal interface IEditModelSubpathTrait
+internal interface IEditModelScopeBaseTrait
 {
     public static readonly Func<ErrorContext, Exception> DefaultExceptionFactory = DefaultExceptionFactoryImpl;
 
     private static Exception DefaultExceptionFactoryImpl(ErrorContext errorContext) =>
         errorContext.Identifier switch {
             ErrorIdentifier.ActorEditContextAndModel => new InvalidOperationException(
-                $"{errorContext.Provocateur?.GetType().Name} requires a non-null {nameof(Model)} property or a non-null {nameof(ActorEditContext)} property, but not both."),
+                $"{errorContext.Provocateur?.GetType().Name} requires exactly one non-null {nameof(Model)} property or non-null {nameof(ActorEditContext)} property."),
             _ => throw new InvalidOperationException($"Unknown error identifier: {errorContext.Identifier}")
         };
 

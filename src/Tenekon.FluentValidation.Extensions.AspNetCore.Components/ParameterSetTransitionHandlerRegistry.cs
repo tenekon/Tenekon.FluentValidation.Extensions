@@ -1,20 +1,26 @@
-﻿namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
+
+namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 internal class ParameterSetTransitionHandlerRegistry
 {
     private readonly List<RegistrationItem> _handlerList = [];
 
-    public void RegisterHandler(Action<EditContextualComponentBaseParameterSetTransition> handler, HandlerInsertPosition insertPosition)
+    public void RegisterHandler(
+        Action<EditContextualComponentBaseParameterSetTransition> handler,
+        HandlerInsertPosition insertPosition,
+        [CallerArgumentExpression(nameof(handler))] string? handlerArgumentExpression = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
 
         if (insertPosition == HandlerInsertPosition.After) {
-            _handlerList.Add(new RegistrationItem(handler));
+            _handlerList.Add(new RegistrationItem(handler, handlerArgumentExpression));
             return;
         }
 
         if (insertPosition == HandlerInsertPosition.Before) {
-            _handlerList.Insert(index: 0, new RegistrationItem(handler));
+            _handlerList.Insert(index: 0, new RegistrationItem(handler, handlerArgumentExpression));
             return;
         }
 
@@ -24,7 +30,8 @@ internal class ParameterSetTransitionHandlerRegistry
     public void RegisterHandler(
         Action<EditContextualComponentBaseParameterSetTransition> handler,
         HandlerInsertPosition insertPosition,
-        Action<EditContextualComponentBaseParameterSetTransition> relativeHandler)
+        Action<EditContextualComponentBaseParameterSetTransition> relativeHandler,
+        [CallerArgumentExpression(nameof(handler))] string? handlerArgumentExpression = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(relativeHandler);
@@ -40,7 +47,7 @@ internal class ParameterSetTransitionHandlerRegistry
             _ => throw new ArgumentException($"Unknown handler insert position: {insertPosition}")
         };
 
-        _handlerList.Insert(insertIndex, new RegistrationItem(handler));
+        _handlerList.Insert(insertIndex, new RegistrationItem(handler, handlerArgumentExpression));
     }
 
     internal IEnumerable<RegistrationItem> GetRegistrationItems() => _handlerList;
@@ -56,5 +63,11 @@ internal class ParameterSetTransitionHandlerRegistry
         _handlerList.RemoveAt(index);
     }
 
-    internal record RegistrationItem(Action<EditContextualComponentBaseParameterSetTransition> Handler);
+    [DebuggerDisplay("{_handlerArgumentExpression}")]
+    internal class RegistrationItem(Action<EditContextualComponentBaseParameterSetTransition> handler, string? handlerArgumentExpression)
+    {
+        private readonly string? _handlerArgumentExpression = handlerArgumentExpression;
+
+        public Action<EditContextualComponentBaseParameterSetTransition> Handler { get; } = handler;
+    }
 }

@@ -37,7 +37,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     private bool _havingValidatorSetExplicitly;
     private IValidator? _validator;
     private ServiceScopeSource _serviceScopeSource;
-    private EditModelSubpath? _editModelSubpathReference;
+    private EditModelValidatorRoutes? _editModelSubpathReference;
 
     /* TODO: Make pluggable */
     // internal readonly LeafEditModelValidatorContext _leafEditModelValidatorContext = new();
@@ -51,7 +51,10 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         _captureEditModelSubpathReferenceAction = CaptureEditModelSubpathReference;
         return;
 
-        void CaptureEditModelSubpathReference(object reference) => _editModelSubpathReference = Unsafe.As<EditModelSubpath>(reference);
+        void CaptureEditModelSubpathReference(object reference)
+        {
+            _editModelSubpathReference = Unsafe.As<EditModelValidatorRoutes>(reference);
+        }
     }
 
     internal override EditContext ActorEditContext => _editModelSubpathReference?.ActorEditContext ?? base.ActorEditContext;
@@ -112,11 +115,11 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 
     private void RenderEditModelSubpathWithRoutes(RenderTreeBuilder builder, RenderFragment? childContent)
     {
-        builder.OpenComponent<EditModelSubpath>(sequence: 0);
-        builder.AddComponentParameter(sequence: 1, nameof(EditModelSubpath.Routes), Routes);
+        builder.OpenComponent<EditModelValidatorRoutes>(sequence: 0);
+        builder.AddComponentParameter(sequence: 1, nameof(EditModelValidatorRoutes.Routes), Routes);
         builder.AddComponentParameter(sequence: 2, nameof(ChildContent), childContent);
-        builder.AddComponentParameter(sequence: 3, nameof(EditModelSubpath.Ancestor), Ancestor.DirectAncestor);
-        builder.AddComponentReferenceCapture(3, _captureEditModelSubpathReferenceAction);
+        builder.AddComponentParameter(sequence: 3, nameof(EditModelValidatorRoutes.Ancestor), Ancestor.DirectAncestor);
+        builder.AddComponentReferenceCapture(sequence: 3, _captureEditModelSubpathReferenceAction);
         builder.CloseComponent();
     }
 
@@ -204,14 +207,12 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         transition2.ActorEditContext.Old = LastParameterSetTransition.ActorEditContext.NewOrNull;
     }
 
-    void IEditModelValidationNotifier.EvaluateValidationScope(ValidationScopeContext candidate)
-    {
+    void IEditModelValidationNotifier.EvaluateValidationScope(ValidationScopeContext candidate) =>
         candidate.IsWithinScope =
             (LastParameterSetTransition.RootEditContext.TryGetNew(out var rootEditContext) &&
                 ReferenceEquals(rootEditContext, candidate.EditContext)) ||
             (EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(candidate.EditContext, out var candidateRootEditContext) &&
                 ReferenceEquals(rootEditContext, candidateRootEditContext));
-    }
 
     private void ClearValidationMessageStores()
     {
@@ -286,7 +287,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
             return _validator.Validate(validationContext);
         } catch (InvalidOperationException error) {
             throw new EditModelValidationException(
-                $"{error.Message} Consider to make use of {nameof(EditModelValidatorSubpath)}, {nameof(EditModelSubpath)} or similiar.",
+                $"{error.Message} Consider to make use of {nameof(EditModelValidatorSubpath)}, {nameof(EditModelValidatorRoutes)} or similiar.",
                 error);
         }
     }

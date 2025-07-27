@@ -153,7 +153,8 @@ public class EditModelValidatorBasicTests : TestContext
             testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
             parameters.Add<Expression<Func<object>>[]?>(x => x.Routes, [() => model.Child]);
         });
-        var subPath = cut.FindComponent<EditModelSubpath>();
+
+        var subPath = cut.FindComponent<EditModelValidatorRoutes>();
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Child.Hello);
         var subPathActorEditContext = subPath.Instance.ActorEditContext;
         subPathActorEditContext.NotifyFieldChanged(modelFieldIdentifier);
