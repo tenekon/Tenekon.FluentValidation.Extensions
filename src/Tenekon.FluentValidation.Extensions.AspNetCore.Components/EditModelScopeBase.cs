@@ -18,7 +18,7 @@ public abstract class EditModelScopeBase<TDerived> : EditContextualComponentBase
 
         // Because Subpath component is NOT validating, but redirecting plain edit context validation requested notifications,
         // we must not listen to validation requested notifications of root edit context, to prevent double notification.
-        TDerived.ParameterSetTransitionHandlerRegistry.RemoveHandler(SubscribeToRootEditContextOnValidationRequestedAction);
+        TDerived.ParameterSetTransitionHandlerRegistry.RemoveHandler(RefreshRootEditContextBindings);
 
         TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(
             SetIsolatedActorEditContextAction,

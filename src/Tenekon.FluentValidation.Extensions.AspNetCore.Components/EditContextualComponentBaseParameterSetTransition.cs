@@ -7,15 +7,11 @@ namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
 
 internal class EditContextualComponentBaseParameterSetTransition : IEditContextualComponentState, IRevisioner
 {
-    public static EditContextualComponentBaseParameterSetTransition Unbound { get; } = new() {
-        Component = new object()
-    };
-
     private int _revision;
     private int _cacheInvalidationState;
 
     internal int Revision => Volatile.Read(ref _revision);
-
+    
     public bool IsDisposing { get; set; }
 
     [field: AllowNull]

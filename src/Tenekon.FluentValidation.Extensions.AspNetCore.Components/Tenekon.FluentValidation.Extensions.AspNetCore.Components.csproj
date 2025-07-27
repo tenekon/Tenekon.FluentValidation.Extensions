@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Tenekon.FluentValidation.Extensions.AspNetCore.Components</RootNamespace>
     <LangVersion>preview</LangVersion>
+    <PackageDescription>The Blazor integration for FluentValidation that offers a unique yet simple approach: scoped, nestable validator components for any region of a form and any part of the model, even repeating elements.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

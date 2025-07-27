@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="PublicApiTests.FluentValidationAspNetCoreComponentsPublicApi_HasNoChanges.verified.txt">
+    <None Update="PublicApiTests.FluentValidationComponentsPublicApi_HasNoChanges.verified.txt">
       <DependentUpon>PublicApiTests.cs</DependentUpon>
     </None>
   </ItemGroup>

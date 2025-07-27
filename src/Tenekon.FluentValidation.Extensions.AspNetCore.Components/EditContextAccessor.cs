@@ -22,4 +22,13 @@ internal static class EditContextAccessor
 
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "<Model>k__BackingField")]
     public static extern ref object GetModel(EditContext editContext);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "OnValidationRequested")]
+    public static extern ref EventHandler<ValidationRequestedEventArgs>? GetOnValidationRequested(EditContext editContext);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "OnFieldChanged")]
+    public static extern ref EventHandler<FieldChangedEventArgs>? GetOnFieldChanged(EditContext editContext);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "OnValidationStateChanged")]
+    public static extern ref EventHandler<ValidationStateChangedEventArgs>? GetOnValidationStateChanged(EditContext editContext);
 }

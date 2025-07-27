@@ -70,49 +70,97 @@ public class EditModelValidatorBasicTests : TestContext
 
     [Theory]
     [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
-    public void ValidModel_ValidationReturnsTrue<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
+    public void UsingActorEditContext_ValidModel_ValidationReturnsTrue<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
         where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
         var model = new Model("World");
-        var context = new EditContext(model);
+        var rootEditContext = new EditContext(model);
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
-            parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
+            parameters.AddCascadingValue(rootEditContext);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, rootEditContext);
         });
 
-        context.Validate().ShouldBeTrue();
+        var actorEditContext = cut.Instance.ActorEditContext;
 
+        var validationReqeustedEvent = EditContextAccessor.GetOnValidationRequested(actorEditContext);
+        validationReqeustedEvent.ShouldNotBeNull();
+        validationReqeustedEvent.GetInvocationList().Length.ShouldBe(1);
 
-        var cutActorEditContex = cut.Instance.ActorEditContext;
-        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
+        var fieldChangedEvent = EditContextAccessor.GetOnFieldChanged(actorEditContext);
+        fieldChangedEvent.ShouldNotBeNull();
+        fieldChangedEvent.GetInvocationList().Length.ShouldBe(1);
+
+        actorEditContext.Validate().ShouldBeTrue();
+
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(actorEditContext, out _, out var counter).ShouldBeTrue();
         counter.ShouldBe(expected: 1);
 
         DisposeComponents();
-        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(context, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(actorEditContext, out _).ShouldBeFalse();
     }
 
     [Theory]
     [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
-    public void InvalidModel_ValidationReturnsFalse<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
+    public void UsingRootEditContext_ValidModel_ValidationReturnsTrue<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
+        where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
+    {
+        var model = new Model("World");
+        var rootEditContext = new EditContext(model);
+
+        using var cut = RenderComponent<TEditModelValidator>(parameters => {
+            parameters.AddCascadingValue(rootEditContext);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, rootEditContext);
+        });
+
+        var validationReqeustedEvent = EditContextAccessor.GetOnValidationRequested(rootEditContext);
+        validationReqeustedEvent.ShouldNotBeNull();
+        validationReqeustedEvent.GetInvocationList().Length.ShouldBe(1);
+
+        rootEditContext.Validate().ShouldBeTrue();
+    }
+
+    [Theory]
+    [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
+    public void UsingActorEditContext_InvalidModel_ValidationReturnsFalse<TEditModelValidator>(
+        ValidatorTestCase<TEditModelValidator> testCase)
         where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
         var model = new Model("WRONG");
-        var context = new EditContext(model);
+        var rootEditContext = new EditContext(model);
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
-            parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
+            parameters.AddCascadingValue(rootEditContext);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, rootEditContext);
         });
 
-        context.Validate().ShouldBeFalse();
+        var actorEditContext = cut.Instance.ActorEditContext;
+        actorEditContext.Validate().ShouldBeFalse();
+        actorEditContext.GetValidationMessages().Count().ShouldBe(1);
 
-        var cutActorEditContex = cut.Instance.ActorEditContext;
-        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(actorEditContext, out _, out var counter).ShouldBeTrue();
         counter.ShouldBe(expected: 1);
 
         DisposeComponents();
-        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(actorEditContext, out _).ShouldBeFalse();
+    }
+
+    [Theory]
+    [MemberData(nameof(EditModelValidatorBasicTestCases.All), MemberType = typeof(EditModelValidatorBasicTestCases))]
+    public void UsingRootEditContext_InvalidModel_ValidationReturnsFalse<TEditModelValidator>(
+        ValidatorTestCase<TEditModelValidator> testCase)
+        where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
+    {
+        var model = new Model("WRONG");
+        var rootEditContext = new EditContext(model);
+
+        using var cut = RenderComponent<TEditModelValidator>(parameters => {
+            parameters.AddCascadingValue(rootEditContext);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, rootEditContext);
+        });
+
+        rootEditContext.Validate().ShouldBeFalse();
+        rootEditContext.GetValidationMessages().Count().ShouldBe(1);
     }
 
     [Theory]
@@ -121,23 +169,23 @@ public class EditModelValidatorBasicTests : TestContext
         where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
         var model = new Model("WRONG");
-        var context = new EditContext(model);
+        var rootEditContext = new EditContext(model);
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
-            parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
+            parameters.AddCascadingValue(rootEditContext);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, rootEditContext);
         });
 
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Hello);
-        var cutActorEditContex = cut.Instance.ActorEditContext;
-        cutActorEditContex.NotifyFieldChanged(modelFieldIdentifier);
-        context.IsValid(modelFieldIdentifier).ShouldBeFalse();
+        var actorEditContex = cut.Instance.ActorEditContext;
+        actorEditContex.NotifyFieldChanged(modelFieldIdentifier);
+        rootEditContext.IsValid(modelFieldIdentifier).ShouldBeFalse();
 
-        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _, out var counter).ShouldBeTrue();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(actorEditContex, out _, out var counter).ShouldBeTrue();
         counter.ShouldBe(expected: 1);
 
         DisposeComponents();
-        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContex, out _).ShouldBeFalse();
+        EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(actorEditContex, out _).ShouldBeFalse();
     }
 
     [Theory]
@@ -146,11 +194,11 @@ public class EditModelValidatorBasicTests : TestContext
         where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
         var model = new Model { Child = { Hello = "WRONG" } };
-        var context = new EditContext(model);
+        var rootEditContext = new EditContext(model);
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
-            parameters.AddCascadingValue(context);
-            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, context);
+            parameters.AddCascadingValue(rootEditContext);
+            testCase.CustomizeParameters(parameters, typeof(ModelValidator), model, rootEditContext);
             parameters.Add<Expression<Func<object>>[]?>(x => x.Routes, [() => model.Child]);
         });
 
@@ -158,7 +206,7 @@ public class EditModelValidatorBasicTests : TestContext
         var modelFieldIdentifier = FieldIdentifier.Create(() => model.Child.Hello);
         var subPathActorEditContext = subPath.Instance.ActorEditContext;
         subPathActorEditContext.NotifyFieldChanged(modelFieldIdentifier);
-        context.IsValid(modelFieldIdentifier).ShouldBeFalse();
+        rootEditContext.IsValid(modelFieldIdentifier).ShouldBeFalse();
 
         var cutActorEditContext = cut.Instance.ActorEditContext;
         EditContextPropertyAccessor.s_rootEditContext.TryGetPropertyValue(cutActorEditContext, out _, out var cutActorEditContextCounter)

@@ -54,18 +54,6 @@ internal abstract class ValueTransition<T> : IValueState<T>
     [MemberNotNullWhen(returnValue: true, nameof(_new))]
     public bool IsNewNonNull => _new is not null;
 
-    public bool TryGetNew([NotNullWhen(returnValue: true)] out T? editContext, bool invalidate = false)
-    {
-        if (!IsNewNonNull) {
-            editContext = default;
-            return false;
-        }
-
-        editContext = _new;
-        _new = default;
-        return true;
-    }
-
     // ReSharper disable once UnusedMemberInSuper.Global
     public abstract bool IsNewSame { get; }
 
@@ -80,6 +68,30 @@ internal abstract class ValueTransition<T> : IValueState<T>
 
             return field;
         }
+    }
+
+    public bool TryGetOld([NotNullWhen(returnValue: true)] out T? value)
+    {
+        if (!IsOldNonNull) {
+            value = default;
+            return false;
+        }
+
+        value = Old;
+        Old = default;
+        return true;
+    }
+
+    public bool TryGetNew([NotNullWhen(returnValue: true)] out T? value)
+    {
+        if (!IsNewNonNull) {
+            value = default;
+            return false;
+        }
+
+        value = _new;
+        _new = default;
+        return true;
     }
 
     protected virtual void InvalidateCacheCore() => _cacheInvalidationState = 0;

@@ -10,7 +10,7 @@
     <PackageReleaseNotes>https://github.com/tenekon/Tenekon.FluentValidation.Extensions/blob/$(PackageVersion)/CHANGELOG.md</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/tenekon/Tenekon.FluentValidation.Extensions.git</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <PackageTags>Blazor;Blazored,Blazorise;FluentValidation;Component;Form;EditForm;EditContext;ASP.NET Core;AspNetCore;Fluent;Validation;Components;Model</PackageTags>
+    <PackageTags>Blazor;Blazored,Blazorise;FluentValidation;Component;Form;EditForm;EditContext;Fluent;Validation;Components;Model</PackageTags>
     <!-- We currently do not want to have a seperate snupkg -->
     <IncludeSymbols>false</IncludeSymbols>
     <DebugType>embedded</DebugType>
