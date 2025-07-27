@@ -1,7 +1,7 @@
 <!-- omit from toc -->
 # 📘 Validator Components Cookbook [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
 
-A practical guide to using `EditModelValidatorRootpath`, `EditModelValidatorSubpath`, and `EditModelSubpath` components in `Tenekon.FluentValidation.Extensions.AspNetCore.Components`.
+A practical guide to using `EditModelValidatorRootpath`, `EditModelValidatorSubpath`, `EditModelValidatorRoutes` and `EditModelScope` components in `Tenekon.FluentValidation.Extensions.AspNetCore.Components`.
 
 <!-- omit from toc -->
 ## Table of Contents
@@ -21,16 +21,16 @@ A practical guide to using `EditModelValidatorRootpath`, `EditModelValidatorSubp
 - [✅ Scenario 5: EditForm → EditModelValidatorSubpath + Routes (Parameter)](#-scenario-5-editform--editmodelvalidatorsubpath--routes-parameter)
   - [🧠 When to use](#-when-to-use-4)
   - [✨ Example](#-example-4)
-- [✅ Scenario 6: EditForm → EditModelValidatorRootpath → EditModelSubpath + Routes (Parameter)](#-scenario-6-editform--editmodelvalidatorrootpath--editmodelsubpath--routes-parameter)
+- [✅ Scenario 6: EditForm → EditModelValidatorRootpath → EditModelValidatorRoutes + Routes (Parameter)](#-scenario-6-editform--editmodelvalidatorrootpath--editmodelvalidatorroutes--routes-parameter)
   - [🧠 When to use](#-when-to-use-5)
   - [✨ Example](#-example-5)
-- [✅ Scenario 7: EditForm → EditModelValidatorSubpath → EditModelSubpath + Routes  (Parameter)](#-scenario-7-editform--editmodelvalidatorsubpath--editmodelsubpath--routes--parameter)
+- [✅ Scenario 7: EditForm → EditModelValidatorSubpath → EditModelValidatorRoutes + Routes  (Parameter)](#-scenario-7-editform--editmodelvalidatorsubpath--editmodelvalidatorroutes--routes--parameter)
   - [🧠 When to use](#-when-to-use-6)
   - [✨ Example](#-example-6)
-- [✅ Scenario 8: EditForm → EditModelSubpath → EditModelValidatorRootpath](#-scenario-8-editform--editmodelsubpath--editmodelvalidatorrootpath)
+- [✅ Scenario 8: EditForm → EditModelScope → EditModelValidatorRootpath](#-scenario-8-editform--editmodelscope--editmodelvalidatorrootpath)
   - [🧠 When to use](#-when-to-use-7)
   - [✨ Example](#-example-7)
-- [✅ Scenario 8: EditForm → EditModelSubpath + Model (Parameter) → EditModelValidatorRootpath](#-scenario-8-editform--editmodelsubpath--model-parameter--editmodelvalidatorrootpath)
+- [✅ Scenario 8: EditForm → EditModelScope + Model (Parameter) → EditModelValidatorRootpath](#-scenario-8-editform--editmodelscope--model-parameter--editmodelvalidatorrootpath)
   - [🧠 When to use](#-when-to-use-8)
   - [✨ Example](#-example-8)
 - [🔧 Tips](#-tips)
@@ -187,11 +187,11 @@ TODO
 
 ---
 
-## ✅ Scenario 6: EditForm → EditModelValidatorRootpath → EditModelSubpath + Routes (Parameter)
+## ✅ Scenario 6: EditForm → EditModelValidatorRootpath → EditModelValidatorRoutes + Routes (Parameter)
 
 ### 🧠 When to use
 
-Use when you want to decouple routing logic into a `<EditModelSubpath></EditModelSubpath>` block, or want to have an isolated edit context.
+Use when you want to decouple routing logic into a `<EditModelValidatorRoutes></EditModelValidatorRoutes>` block.
 
 ### ✨ Example
 
@@ -201,10 +201,10 @@ Use when you want to decouple routing logic into a `<EditModelSubpath></EditMode
     <!-- Cascades EditContext B --->
     <!-- Validation errors bubbles up to EditContext A & B -->
     <EditModelValidatorRootpath ValidatorType="typeof(MainModelValidator)">
-        <EditModelSubpath Routes="[() => _mainModel.PartA, () => _mainModel.PartB]">
+        <EditModelValidatorRoutes Routes="[() => _mainModel.PartA, () => _mainModel.PartB]">
             <InputText @bind-Value="_mainModel.PartA.SomeText" />
             <InputNumber @bind-Value="_mainModel.PartB.SomeNumber" />
-        </EditModelSubpath>
+        </EditModelValidatorRoutes>
     </EditModelValidatorRootpath>
 </EditForm>
 ```
@@ -217,11 +217,11 @@ Use when you want to decouple routing logic into a `<EditModelSubpath></EditMode
 
 ---
 
-## ✅ Scenario 7: EditForm → EditModelValidatorSubpath → EditModelSubpath + Routes  (Parameter)
+## ✅ Scenario 7: EditForm → EditModelValidatorSubpath → EditModelValidatorRoutes + Routes  (Parameter)
 
 ### 🧠 When to use
 
-Use to nest `EditModelSubpath` manually inside a scoped submodel validator.
+Use to nest `EditModelValidatorRoutes` manually inside a scoped submodel validator.
 
 ### ✨ Example
 
@@ -230,10 +230,10 @@ Use to nest `EditModelSubpath` manually inside a scoped submodel validator.
     @{
         var step = _mainModel.Step;
         <EditModelValidatorSubpath Model="step" ValidatorType="typeof(StepValidator)">
-            <EditModelSubpath Routes="[() => step.PartA, () => step.PartB]">
+            <EditModelValidatorRoutes Routes="[() => step.PartA, () => step.PartB]">
                 <InputText @bind-Value="step.PartA.SomeText" />
                 <InputNumber @bind-Value="step.PartB.SomeNumber" />
-            </EditModelSubpath>
+            </EditModelValidatorRoutes>
         </EditModelValidatorSubpath>
     }
 </EditForm>
@@ -241,7 +241,7 @@ Use to nest `EditModelSubpath` manually inside a scoped submodel validator.
 
 ---
 
-## ✅ Scenario 8: EditForm → EditModelSubpath → EditModelValidatorRootpath
+## ✅ Scenario 8: EditForm → EditModelScope → EditModelValidatorRootpath
 
 ### 🧠 When to use
 
@@ -252,18 +252,18 @@ TODO
 ```razor
 <EditForm Model="_mainModel">
     @{
-        <EditModelSubpath>
+        <EditModelScope>
             <EditModelValudatorRootpath ValidatorType="typeof(MainModelValidator)">
             <InputText @bind-Value="step.SomeText" />
             <InputNumber @bind-Value="step.SomeNumber" />
-        </EditModelValidatorSubpath>
+        </EditModelScope>
     }
 </EditForm>
 ```
 
 ---
 
-## ✅ Scenario 8: EditForm → EditModelSubpath + Model (Parameter) → EditModelValidatorRootpath
+## ✅ Scenario 8: EditForm → EditModelScope + Model (Parameter) → EditModelValidatorRootpath
 
 ### 🧠 When to use
 
@@ -275,11 +275,11 @@ TODO
 <EditForm Model="_mainModel">
     @{
         var step = _mainModel.Step;
-        <EditModelSubpath Model="step">
+        <EditModelScope Model="step">
             <EditModelValudatorRootpath ValidatorType="typeof(StepValidator)">
             <InputText @bind-Value="step.SomeText" />
             <InputNumber @bind-Value="step.SomeNumber" />
-        </EditModelValidatorSubpath>
+        </EditModelScope>
     }
 </EditForm>
 ```
@@ -287,7 +287,7 @@ TODO
 <!-- omit from toc -->
 ### ⚖️ Notes
 
-* `<EditModelSubpath>` must not be self-closing
+* `<EditModelValidatorRoutes>` must not be self-closing
 * Enables flexible validation of deep models
 * Keep route expressions targeting complex types only
 
