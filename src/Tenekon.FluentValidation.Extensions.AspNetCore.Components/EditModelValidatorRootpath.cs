@@ -9,7 +9,7 @@ public class EditModelValidatorRootpath : EditModelValidatorBase<EditModelValida
     static EditModelValidatorRootpath()
     {
         RuntimeHelpers.RunClassConstructor(typeof(EditModelValidatorBase<EditModelValidatorRootpath>).TypeHandle);
-        
+
         ParameterSetTransitionHandlerRegistryProvider<EditModelValidatorRootpath>.ParameterSetTransitionHandlerRegistry.RegisterHandler(
             CopyAncestorEditContextFieldReferencesToActorEditContextAction,
             HandlerInsertPosition.After,
@@ -39,8 +39,8 @@ public class EditModelValidatorRootpath : EditModelValidatorBase<EditModelValida
                 var newActorEditContext = new EditContext(ancestorEditContextTransition.New.Model);
                 actorEditContextTransition.New = newActorEditContext;
 
-                /* REVISE: Once Rootpath becomes internally a direct descendant, we must cascade field references of the ancestor to
-                 * the actor edit context.
+                /* REVISE: Once (if ever) Rootpath becomes internally a direct descendant (not direct ancestor),
+                 * we must cascade field references of the ancestor to the actor edit context.
                  */
             } // else { /* Do not set any actor edit context, thus actor edit context becomes ancestor edit context. */ }  
         } else if (transition2.ActorEditContext.IsOldNonNull) {

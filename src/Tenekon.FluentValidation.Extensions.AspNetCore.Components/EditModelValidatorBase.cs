@@ -18,7 +18,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     static EditModelValidatorBase()
     {
         RuntimeHelpers.RunClassConstructor(typeof(EditContextualComponentBase<TDerived>).TypeHandle);
-        
+
         TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(UnsetEditModelValidatorRoutesReference, HandlerInsertPosition.After);
 
         TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(
@@ -462,7 +462,15 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         private AsyncServiceScope? _asyncServiceScope;
         private int _state;
 
-        public readonly AsyncServiceScope Value => _asyncServiceScope ?? throw new InvalidOperationException();
+        public readonly AsyncServiceScope Value {
+            get {
+                if (_state != (int)States.Initialized) {
+                    throw new InvalidOperationException("Service scope is either not initialized or has already been dispsed.");
+                }
+
+                return _asyncServiceScope ?? throw new InvalidOperationException("Although the service scope is initialized, it is null.");
+            }
+        }
 
         public static bool TryAcquireInitialization(ref ServiceScopeSource source)
         {
@@ -492,14 +500,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
             (Interlocked.Or(ref source._state, (int)States.AsyncDisposed) & (int)(States.AsyncDisposed | States.Initialized)) ==
             (int)States.Initialized;
 
-        public readonly void Dispose()
-        {
-            if (!_asyncServiceScope.HasValue) {
-                return;
-            }
-
-            Value.Dispose();
-        }
+        public readonly void Dispose() => _asyncServiceScope?.Dispose();
 
         public readonly ValueTask DisposeAsync()
         {
@@ -507,7 +508,7 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
                 return ValueTask.CompletedTask;
             }
 
-            return Value.DisposeAsync();
+            return _asyncServiceScope.Value.DisposeAsync();
         }
 
         [Flags]
