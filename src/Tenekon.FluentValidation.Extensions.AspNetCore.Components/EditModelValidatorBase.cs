@@ -17,7 +17,18 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
 {
     static EditModelValidatorBase()
     {
+        RuntimeHelpers.RunClassConstructor(typeof(EditContextualComponentBase<TDerived>).TypeHandle);
+        
         TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(UnsetEditModelValidatorRoutesReference, HandlerInsertPosition.After);
+
+        TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(
+            RefreshRootEditContextValidationMessageStore,
+            HandlerInsertPosition.After);
+
+        TDerived.ParameterSetTransitionHandlerRegistry.RegisterHandler(
+            RefreshActorEditContextValidationMessageStore,
+            HandlerInsertPosition.After);
+
         return;
 
         void UnsetEditModelValidatorRoutesReference(EditContextualComponentBaseParameterSetTransition transition)
@@ -29,6 +40,54 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         }
     }
 
+    internal static Action<EditContextualComponentBaseParameterSetTransition> RefreshRootEditContextValidationMessageStore { get; } =
+        static transition => {
+            var component = (EditModelValidatorBase<TDerived>)transition.Component;
+            var lastTransition = component.LastParameterSetTransition;
+
+            var root = transition.RootEditContext;
+            if (root.IsNewDifferent) {
+                DeinitializeValidationMessageStore();
+
+                if (root.IsNewNonNull) {
+                    component._rootEditContextValidationMessageStore = new ValidationMessageStore(root.New);
+                }
+
+                void DeinitializeValidationMessageStore()
+                {
+                    if (lastTransition.RootEditContext.IsNewNonNull && component._rootEditContextValidationMessageStore is not null) {
+                        component._rootEditContextValidationMessageStore.Clear();
+                        component._rootEditContextValidationMessageStore = null;
+                    }
+                }
+            }
+        };
+
+    internal static Action<EditContextualComponentBaseParameterSetTransition> RefreshActorEditContextValidationMessageStore { get; } =
+        transition => {
+            var component = (EditModelValidatorBase<TDerived>)transition.Component;
+            var lastTransition = component.LastParameterSetTransition;
+
+            var root = transition.RootEditContext;
+            var actor = transition.ActorEditContext;
+            if (actor.IsNewDifferent || root.IsNewDifferent) {
+                DeinitializeValidationMessageStore();
+
+                if (transition.IsNewEditContextOfActorAndRootNonNullAndDifferent) {
+                    component._actorEditContextValidationMessageStore = new ValidationMessageStore(actor.New);
+                }
+
+                void DeinitializeValidationMessageStore()
+                {
+                    if (lastTransition.IsNewEditContextOfActorAndRootNonNullAndDifferent &&
+                        component._actorEditContextValidationMessageStore is not null) {
+                        component._actorEditContextValidationMessageStore.Clear();
+                        component._actorEditContextValidationMessageStore = null;
+                    }
+                }
+            }
+        };
+
     private readonly RenderFragment _renderEditModelValidatorContent;
     private readonly RenderFragment<RenderFragment?> _renderEditContextualComponentFragment;
     private readonly RenderFragment _renderEditModelValidatorRoutesFragment;
@@ -38,6 +97,9 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
     private IValidator? _validator;
     private ServiceScopeSource _serviceScopeSource;
     private EditModelValidatorRoutes? _editModelValidatorRoutesReference;
+
+    private ValidationMessageStore? _rootEditContextValidationMessageStore;
+    private ValidationMessageStore? _actorEditContextValidationMessageStore;
 
     /* TODO: Make pluggable */
     // internal readonly LeafEditModelValidatorContext _leafEditModelValidatorContext = new();
@@ -198,13 +260,6 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         if (!transition2.IsDisposing) {
             transition2.Routes.New = Routes;
         }
-    }
-
-    internal override void ConfigureDisposalParameterSetTransition(EditContextualComponentBaseParameterSetTransition transition)
-    {
-        base.ConfigureDisposalParameterSetTransition(transition);
-        var transition2 = Unsafe.As<EditModelValidatorBaseParameterSetTransition>(transition);
-        transition2.ActorEditContext.Old = LastParameterSetTransition.ActorEditContext.NewOrNull;
     }
 
     void IEditModelValidationNotifier.EvaluateValidationScope(ValidationScopeContext candidate) =>
