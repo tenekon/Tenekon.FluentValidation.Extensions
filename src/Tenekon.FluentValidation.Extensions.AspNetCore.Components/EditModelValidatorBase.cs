@@ -230,15 +230,17 @@ public abstract class EditModelValidatorBase<TDerived> : EditContextualComponent
         var validatorType = ValidatorType;
         // Whenever validator type is not null AND the validator type of the not yet or already materialized validator differs from that
         // validator type, then recreate.
-        if (validatorType is not null && _validator?.GetType() != validatorType) {
-            if (ServiceScopeSource.TryAcquireInitialization(ref serviceScopeSource)) {
-                await DeinitalizeServiceScopeSourceAsync();
-                // ReSharper disable once MethodHasAsyncOverload
-                DeinitalizeServiceScopeSource();
-                ServiceScopeSource.Initialize(ref serviceScopeSource, ref _serviceScopeSource, this);
-            }
+        if (validatorType is not null) {
+            if (_validator?.GetType() != validatorType) {
+                if (ServiceScopeSource.TryAcquireInitialization(ref serviceScopeSource)) {
+                    await DeinitalizeServiceScopeSourceAsync();
+                    // ReSharper disable once MethodHasAsyncOverload
+                    DeinitalizeServiceScopeSource();
+                    ServiceScopeSource.Initialize(ref serviceScopeSource, ref _serviceScopeSource, this);
+                }
 
-            _validator = (IValidator)serviceScopeSource.Value.ServiceProvider.GetRequiredService(validatorType);
+                _validator = (IValidator)serviceScopeSource.Value.ServiceProvider.GetRequiredService(validatorType);
+            }
         } else {
             Debug.Assert(Validator is not null);
             _validator = Validator;
