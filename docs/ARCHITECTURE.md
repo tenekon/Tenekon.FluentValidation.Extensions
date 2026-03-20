@@ -1,5 +1,5 @@
 <!-- omit from toc -->
-# Validator Components Architecture [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
+# Validator Components Architecture [![NuGet](https://img.shields.io/nuget/v/Tenekon.Extensions.FluentValidation.Blazor?label=Tenekon.Extensions.FluentValidation.Blazor)](https://www.nuget.org/packages/Tenekon.Extensions.FluentValidation.Blazor)
 
 This document describes the current architecture of the validator components.
 It is the place for component roles, edit-context relationships, and validation flow at the architectural level.

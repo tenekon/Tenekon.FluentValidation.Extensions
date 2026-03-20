@@ -1,3 +1,0 @@
-﻿namespace Tenekon.FluentValidation.Extensions.AspNetCore.Components;
-
-internal class EditModelValidatorBaseParameterSetTransition : EditContextualComponentBaseParameterSetTransition;

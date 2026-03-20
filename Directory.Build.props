@@ -7,10 +7,10 @@
     <PackageLicenseFile Condition="'$(PackageLicenseFile)' == ''">LICENSE</PackageLicenseFile>
     <PackageIcon Condition="'$(PackageIcon)' == ''">icon.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>https://github.com/tenekon/Tenekon.FluentValidation.Extensions/blob/$(PackageVersion)/CHANGELOG.md</PackageReleaseNotes>
-    <RepositoryUrl>https://github.com/tenekon/Tenekon.FluentValidation.Extensions.git</RepositoryUrl>
+    <PackageReleaseNotes>https://github.com/tenekon/Tenekon.Extensions.FluentValidation.Blazor/blob/$(PackageVersion)/CHANGELOG.md</PackageReleaseNotes>
+    <RepositoryUrl>https://github.com/tenekon/Tenekon.Extensions.FluentValidation.Blazor.git</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <PackageTags>Blazor;Blazored,Blazorise;FluentValidation;Component;Form;EditForm;EditContext;Fluent;Validation;Components;Model</PackageTags>
+    <PackageTags>Blazor;Blazored,Blazorise;FluentValidation;Component;Form;EditForm;EditContext;Fluent;Validation;AspNetCore;Components;Model</PackageTags>
     <!-- We currently do not want to have a seperate snupkg -->
     <IncludeSymbols>false</IncludeSymbols>
     <DebugType>embedded</DebugType>

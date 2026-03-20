@@ -1,0 +1,3 @@
+﻿namespace Tenekon.Extensions.FluentValidation.Blazor;
+
+internal class EditModelValidatorBaseParameterSetTransition : EditContextualComponentBaseParameterSetTransition;

@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tenekon.Extensions.FluentValidation.Blazor", "src\Tenekon.Extensions.FluentValidation.Blazor\Tenekon.Extensions.FluentValidation.Blazor.csproj", "{D5BC1DBD-7354-4584-8C49-C70F6E9F7655}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tenekon.Extensions.FluentValidation.Blazor.Test", "test\Tenekon.Extensions.FluentValidation.Blazor.Test\Tenekon.Extensions.FluentValidation.Blazor.Test.csproj", "{C0FCC09A-1C6A-4B31-9248-B459CEE49533}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D5BC1DBD-7354-4584-8C49-C70F6E9F7655}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D5BC1DBD-7354-4584-8C49-C70F6E9F7655}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D5BC1DBD-7354-4584-8C49-C70F6E9F7655}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D5BC1DBD-7354-4584-8C49-C70F6E9F7655}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0FCC09A-1C6A-4B31-9248-B459CEE49533}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0FCC09A-1C6A-4B31-9248-B459CEE49533}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0FCC09A-1C6A-4B31-9248-B459CEE49533}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0FCC09A-1C6A-4B31-9248-B459CEE49533}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

@@ -1,5 +1,5 @@
 <!-- omit from toc -->
-# Validator Components Motivation [![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components?label=Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
+# Validator Components Motivation [![NuGet](https://img.shields.io/nuget/v/Tenekon.Extensions.FluentValidation.Blazor?label=Tenekon.Extensions.FluentValidation.Blazor)](https://www.nuget.org/packages/Tenekon.Extensions.FluentValidation.Blazor)
 
 This document records the motivation behind the package.
 It is not the normative architecture document.

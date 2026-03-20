@@ -1,9 +1,9 @@
-# Tenekon.FluentValidation.Extensions.AspNetCore.Components
+# Tenekon.Extensions.FluentValidation.Blazor
 
-[![NuGet](https://img.shields.io/nuget/v/Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://www.nuget.org/packages/Tenekon.FluentValidation.Extensions.AspNetCore.Components)
-[![License](https://img.shields.io/github/license/tenekon/Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://github.com/tenekon/Tenekon.FluentValidation.Extensions.AspNetCore.Components/blob/main/LICENSE)
-[![Activity](https://img.shields.io/github/last-commit/tenekon/Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://github.com/tenekon/Tenekon.FluentValidation.Extensions.AspNetCore.Components/commits/main/)
-[![Stars](https://img.shields.io/github/stars/tenekon/Tenekon.FluentValidation.Extensions.AspNetCore.Components)](https://github.com/tenekon/Tenekon.FluentValidation.Extensions.AspNetCore.Components/stargazers)
+[![NuGet](https://img.shields.io/nuget/v/Tenekon.Extensions.FluentValidation.Blazor)](https://www.nuget.org/packages/Tenekon.Extensions.FluentValidation.Blazor)
+[![License](https://img.shields.io/github/license/tenekon/Tenekon.Extensions.FluentValidation.Blazor)](https://github.com/tenekon/Tenekon.Extensions.FluentValidation.Blazor/blob/main/LICENSE)
+[![Activity](https://img.shields.io/github/last-commit/tenekon/Tenekon.Extensions.FluentValidation.Blazor)](https://github.com/tenekon/Tenekon.Extensions.FluentValidation.Blazor/commits/main/)
+[![Stars](https://img.shields.io/github/stars/tenekon/Tenekon.Extensions.FluentValidation.Blazor)](https://github.com/tenekon/Tenekon.Extensions.FluentValidation.Blazor/stargazers)
 [![Discord](https://img.shields.io/discord/1288602831095468157?label=tenekon%20community)](https://discord.gg/VCa8ePSAqD)
 
 Scoped, nestable FluentValidation for Blazor forms. Use it to validate the form root, a nested model, or a routed region of a form without giving up Blazor's `EditContext` flow.
@@ -12,7 +12,7 @@ Scoped, nestable FluentValidation for Blazor forms. Use it to validate the form 
 > Status: `1.0-alpha`. The public API is intended to be stable, but changes may occur as the library matures.
 
 > [!NOTE]
-> Repository rename: this repository used to be called `Tenekon.FluentValidation.Extensions`. It was renamed to `Tenekon.FluentValidation.Extensions.AspNetCore.Components` to match the single package it ships.
+> Repository rename: this repository used to be called `Tenekon.FluentValidation.Extensions`. It was renamed to `Tenekon.Extensions.FluentValidation.Blazor` to match the single package it ships.
 
 ## Why This Package
 
@@ -30,7 +30,7 @@ This package lets you:
 Install the package:
 
 ```bash
-dotnet add package Tenekon.FluentValidation.Extensions.AspNetCore.Components
+dotnet add package Tenekon.Extensions.FluentValidation.Blazor
 ```
 
 If you want to resolve validators from dependency injection by using `ValidatorType`, also install:
@@ -76,7 +76,7 @@ Add the package namespace to `_Imports.razor` or directly in the component:
 
 ```razor
 @using Microsoft.AspNetCore.Components.Forms
-@using Tenekon.FluentValidation.Extensions.AspNetCore.Components
+@using Tenekon.Extensions.FluentValidation.Blazor
 ```
 
 Then wire the validator into your `EditForm`:
@@ -131,8 +131,8 @@ For worked examples of all four components, see the [Validator Components Cookbo
 ## Development
 
 ```bash
-git clone https://github.com/tenekon/Tenekon.FluentValidation.Extensions.AspNetCore.Components.git
-cd Tenekon.FluentValidation.Extensions.AspNetCore.Components
+git clone https://github.com/tenekon/Tenekon.Extensions.FluentValidation.Blazor.git
+cd Tenekon.Extensions.FluentValidation.Blazor
 dotnet test
 ```
 

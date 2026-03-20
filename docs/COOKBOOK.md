@@ -1,6 +1,6 @@
 # Validator Components Cookbook
 
-This cookbook is a task-oriented guide for `Tenekon.FluentValidation.Extensions.AspNetCore.Components`.
+This cookbook is a task-oriented guide for `Tenekon.Extensions.FluentValidation.Blazor`.
 
 It focuses on the consumer-facing usage paths that can be traced directly to the current source and focused tests in this repository. In particular, routed recipes use the `Routes=` parameter on `EditModelValidatorRootpath` or `EditModelValidatorSubpath`, because that is the best-covered consumer entrypoint for routed validation in the current codebase.
 
@@ -25,7 +25,7 @@ It focuses on the consumer-facing usage paths that can be traced directly to the
 Install the package:
 
 ```bash
-dotnet add package Tenekon.FluentValidation.Extensions.AspNetCore.Components
+dotnet add package Tenekon.Extensions.FluentValidation.Blazor
 ```
 
 If you want to resolve validators through DI by using `ValidatorType`, install the FluentValidation DI helpers as well:
@@ -55,7 +55,7 @@ Add these imports to `_Imports.razor` or directly in the component that uses the
 
 ```razor
 @using Microsoft.AspNetCore.Components.Forms
-@using Tenekon.FluentValidation.Extensions.AspNetCore.Components
+@using Tenekon.Extensions.FluentValidation.Blazor
 ```
 
 ### Shared sample types
