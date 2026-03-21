@@ -73,7 +73,7 @@ public class EditModelValidatorBasicTests : TestContext
     public void UsingActorEditContext_ValidModel_ValidationReturnsTrue<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
         where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
-        var model = new Model("valid");
+        var model = new Model("Field1");
         var rootEditContext = new EditContext(model);
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {
@@ -105,7 +105,7 @@ public class EditModelValidatorBasicTests : TestContext
     public void UsingRootEditContext_ValidModel_ValidationReturnsTrue<TEditModelValidator>(ValidatorTestCase<TEditModelValidator> testCase)
         where TEditModelValidator : EditModelValidatorBase<TEditModelValidator>, IParameterSetTransitionHandlerRegistryProvider
     {
-        var model = new Model("valid");
+        var model = new Model("Field1");
         var rootEditContext = new EditContext(model);
 
         using var cut = RenderComponent<TEditModelValidator>(parameters => {

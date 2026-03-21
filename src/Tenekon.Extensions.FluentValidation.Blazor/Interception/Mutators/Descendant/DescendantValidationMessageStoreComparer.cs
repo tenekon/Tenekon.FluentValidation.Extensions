@@ -38,7 +38,9 @@ internal sealed class DescendantValidationMessageStoreComparer(EditContext editC
                 messagesMapOriginalRef = messagesMapCustom;
             }
 
-            AccessLogger.LogFieldStateAccess(validationMessageStoreInput);
+            if (!ReferenceEquals(validationMessageStoreInput, InterceptionWarmupMarkers.ValidationMessageStore)) {
+                AccessLogger.LogFieldStateAccess(validationMessageStoreInput);
+            }
         }
 
         if (actorFieldAlreadyAssociatesStore) {
